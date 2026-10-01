@@ -255,6 +255,13 @@ code {
   font-size: 16px;
 }
 
+.panel-hint {
+  margin: -8px 0 14px;
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .panel-header {
   display: flex;
   align-items: center;
@@ -289,6 +296,20 @@ code {
   background: var(--bg);
   color: var(--text);
   flex: 1 1 140px;
+}
+
+.sample-preview {
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px dashed var(--border);
+  font-size: 13px;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+
+.sample-preview code {
+  color: var(--text);
 }
 
 .analyze-result {

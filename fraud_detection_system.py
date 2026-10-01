@@ -15,7 +15,6 @@ if hasattr(sys.stdout, 'reconfigure'):
 
 import sqlite3
 import pandas as pd
-import numpy as np
 from datetime import datetime, timedelta
 import json
 from pathlib import Path
@@ -131,7 +130,7 @@ class FraudDetectionSystem:
             'customer_id': customer_id,
             'timestamp': datetime.now().isoformat(),
             'amount': transaction_data['amount'],
-            'merchant_category': transaction_data.get('merchant_category'),
+            'txn_time': transaction_data.get('Time'),
             'fraud_score': fraud_probability,
             'is_fraud': is_fraud,
             'decision': final_decision,
@@ -196,66 +195,38 @@ class FraudDetectionSystem:
     def _perform_sql_filtering(self, transaction, customer_profile):
         """
         Perform SQL-based pre-filtering (Theme 5: SQL Query Optimization)
-        
+
         Uses database queries to identify obvious fraud patterns
         before expensive ML computation
         """
         flags = {
             'threshold_exceeded': False,
             'velocity_anomaly': False,
-            'geographic_anomaly': False,
-            'merchant_anomaly': False,
             'unusual_time': False
         }
-        
+
         # Check 1: Amount threshold (SQL optimization: indexed queries)
         if transaction['amount'] > customer_profile['avg_transaction'] * 5:
             flags['threshold_exceeded'] = True
-        
+
         # Check 2: Velocity anomaly (unusual transaction frequency)
         recent_transactions = self.db_manager.get_recent_transactions(
-            transaction['customer_id'], 
+            transaction['customer_id'],
             minutes=60
         )
         if len(recent_transactions) > 10:  # More than 10 in an hour is unusual
             flags['velocity_anomaly'] = True
-        
-        # Check 3: Geographic anomaly
-        if self._check_geographic_anomaly(transaction, customer_profile):
-            flags['geographic_anomaly'] = True
-        
-        # Check 4: Unusual merchant
-        if transaction.get('merchant_category') not in customer_profile['usual_merchants']:
-            flags['merchant_anomaly'] = True
-        
-        # Check 5: Unusual time
-        hour = datetime.now().hour
+
+        # Check 3: Unusual time ('Time' is seconds elapsed since the
+        # dataset's first transaction; mod a day's worth of seconds gives
+        # a rough time-of-day)
+        seconds = transaction.get('Time', 0) or 0
+        hour = int((seconds % 86400) // 3600)
         if hour < 6 or hour > 22:  # Outside banking hours
             if customer_profile['unusual_hours_frequency'] < 0.1:
                 flags['unusual_time'] = True
-        
+
         return flags
-    
-    def _check_geographic_anomaly(self, transaction, customer_profile):
-        """Check if transaction is geographically impossible"""
-        try:
-            last_location = customer_profile.get('last_location', 'Kampala')
-            current_location = transaction.get('location', 'Kampala')
-            
-            # Simplified geographic check (in real system would use GPS coordinates)
-            if last_location != current_location:
-                time_since_last = (datetime.now() - customer_profile['last_transaction_time']).total_seconds() / 3600
-                
-                # If different location within 1 hour, could be impossible travel
-                distance_km = np.random.uniform(50, 200)  # Simulated distance
-                max_possible_km = time_since_last * 100  # Assuming max 100 km/hour travel
-                
-                if distance_km > max_possible_km and time_since_last < 1:
-                    return True
-        except:
-            pass
-        
-        return False
     
     def _combine_detections(self, sql_flags, ml_fraud, fraud_probability):
         """
@@ -276,7 +247,7 @@ class FraudDetectionSystem:
     
     def _validate_transaction(self, transaction):
         """Validate transaction data"""
-        required_fields = ['customer_id', 'amount', 'transaction_id', 'merchant_category']
+        required_fields = ['customer_id', 'amount', 'transaction_id']
         return all(field in transaction for field in required_fields)
     
     def generate_report(self):
