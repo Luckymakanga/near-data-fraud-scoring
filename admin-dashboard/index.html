@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Fraud Detection Admin</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Login screen -->
+  <div class="login-screen" id="loginScreen">
+    <form class="login-card" id="loginForm">
+      <h1>Fraud Detection</h1>
+      <p class="login-sub">Uganda Banking Sector &middot; Admin Console</p>
+      <label>
+        Username
+        <input type="text" id="username" autocomplete="username" value="admin" required />
+      </label>
+      <label>
+        Password
+        <input type="password" id="password" autocomplete="current-password" value="admin" required />
+      </label>
+      <button type="submit" class="btn primary wide">Sign In</button>
+      <p class="login-error" id="loginError" hidden></p>
+      <p class="login-hint">API: <code id="apiUrlHint"></code></p>
+    </form>
+  </div>
+
+  <!-- Dashboard -->
+  <div class="dashboard" id="dashboard" hidden>
+    <header class="topbar">
+      <div class="brand">
+        <h1>Fraud Detection</h1>
+        <span class="brand-sub">Admin Console</span>
+      </div>
+      <div class="topbar-right">
+        <span class="api-status" id="apiStatus"><span class="dot"></span> checking&hellip;</span>
+        <button class="btn ghost" id="refreshBtn">Refresh</button>
+        <button class="btn ghost" id="logoutBtn">Logout</button>
+      </div>
+    </header>
+
+    <section class="stats-grid" id="statsGrid">
+      <div class="stat-card">
+        <span class="stat-label">Total Transactions</span>
+        <span class="stat-value" id="statTotal">&ndash;</span>
+      </div>
+      <div class="stat-card alert">
+        <span class="stat-label">Flagged as Fraud</span>
+        <span class="stat-value" id="statFraudCount">&ndash;</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Fraud Rate</span>
+        <span class="stat-value" id="statFraudRate">&ndash;</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Blocked</span>
+        <span class="stat-value" id="statBlocked">&ndash;</span>
+      </div>
+      <div class="stat-card good">
+        <span class="stat-label">Prevention Rate</span>
+        <span class="stat-value" id="statPrevention">&ndash;</span>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Analyze a Transaction</h2>
+      <form class="analyze-form" id="analyzeForm">
+        <select id="aCustomer" required>
+          <option value="">Customer&hellip;</option>
+          <option>CUST001</option><option>CUST002</option><option>CUST003</option>
+          <option>CUST004</option><option>CUST005</option><option>CUST006</option>
+          <option>CUST007</option><option>CUST008</option><option>CUST009</option>
+          <option>CUST010</option>
+        </select>
+        <input type="number" id="aAmount" placeholder="Amount (UGX)" min="0" step="1000" required />
+        <select id="aMerchant" required>
+          <option value="">Merchant&hellip;</option>
+          <option>Supermarket</option><option>Petrol Station</option><option>Restaurant</option>
+          <option>Mobile Money</option><option>Pharmacy</option><option>Utility Payment</option>
+          <option>School Fee</option><option>Hospital</option><option>Grocery</option>
+          <option>Hardware</option><option>Clothing</option><option>Entertainment</option>
+          <option>Unknown Merchant</option>
+        </select>
+        <select id="aLocation">
+          <option>Kampala</option><option>Wakiso</option><option>Entebbe</option>
+          <option>Jinja</option><option>Masaka</option><option>Mbale</option>
+          <option>Kigali</option><option>Mbarara</option><option>Fort Portal</option><option>Soroti</option>
+        </select>
+        <input type="number" id="aHour" placeholder="Hour (0-23)" min="0" max="23" />
+        <button type="submit" class="btn primary">Analyze</button>
+      </form>
+      <div class="analyze-result" id="analyzeResult" hidden></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Recent Transactions</h2>
+        <label class="auto-refresh">
+          <input type="checkbox" id="autoRefresh" checked />
+          Auto-refresh
+        </label>
+      </div>
+      <div class="table-wrap">
+        <table class="tx-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Transaction</th>
+              <th>Customer</th>
+              <th>Merchant</th>
+              <th>Amount (UGX)</th>
+              <th>Fraud Score</th>
+              <th>Decision</th>
+            </tr>
+          </thead>
+          <tbody id="txTableBody">
+            <tr><td colspan="7" class="table-empty">Loading&hellip;</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Top Fraud Patterns</h2>
+      <ul class="pattern-list" id="patternList">
+        <li class="table-empty">Loading&hellip;</li>
+      </ul>
+    </section>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
