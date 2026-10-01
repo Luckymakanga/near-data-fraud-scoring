@@ -83,6 +83,38 @@
     </section>
 
     <section class="panel">
+      <h2>Upload a Dataset</h2>
+      <p class="panel-hint">Upload a CSV with the same columns as the training data (<code>Time, V1..V28, Amount</code>, optional <code>Class</code> for comparison) and every row gets scored by the trained model. Up to 500 rows per upload.</p>
+      <form class="upload-form" id="uploadForm">
+        <select id="uCustomer">
+          <option value="ROTATE" selected>Rotate across all demo customers</option>
+          <option>CUST001</option><option>CUST002</option><option>CUST003</option>
+          <option>CUST004</option><option>CUST005</option><option>CUST006</option>
+          <option>CUST007</option><option>CUST008</option><option>CUST009</option>
+          <option>CUST010</option>
+        </select>
+        <input type="file" id="uFile" accept=".csv" required />
+        <button type="submit" class="btn primary" id="uploadBtn">Upload &amp; Analyze</button>
+      </form>
+      <div class="upload-result" id="uploadResult" hidden></div>
+      <div class="table-wrap" id="uploadTableWrap" hidden>
+        <table class="tx-table">
+          <thead>
+            <tr>
+              <th>Transaction</th>
+              <th>Customer</th>
+              <th>Amount</th>
+              <th>Fraud Score</th>
+              <th>Decision</th>
+              <th>Actual</th>
+            </tr>
+          </thead>
+          <tbody id="uploadTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
       <h2>Customer Risk Profile</h2>
       <form class="lookup-form" id="lookupForm">
         <select id="lCustomer" required>

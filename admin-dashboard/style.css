@@ -326,6 +326,47 @@ code {
 .analyze-result.decision-MONITOR { background: var(--blue-soft); border-color: var(--blue); }
 .analyze-result.decision-ALLOW { background: var(--green-soft); border-color: var(--green); }
 
+/* ---------- Upload dataset ---------- */
+
+.upload-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.upload-form select {
+  font: inherit;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  flex: 1 1 220px;
+}
+
+.upload-form input[type="file"] {
+  font: inherit;
+  font-size: 13px;
+  color: var(--text-dim);
+  flex: 1 1 220px;
+}
+
+.upload-result {
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.upload-result.error { background: var(--red-soft); border-color: var(--red); }
+
+#uploadTableWrap {
+  margin-top: 14px;
+}
+
 /* ---------- Customer lookup ---------- */
 
 .lookup-form {

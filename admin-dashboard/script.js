@@ -39,6 +39,14 @@ const el = {
   lCustomer: document.getElementById("lCustomer"),
   profileCard: document.getElementById("profileCard"),
 
+  uploadForm: document.getElementById("uploadForm"),
+  uCustomer: document.getElementById("uCustomer"),
+  uFile: document.getElementById("uFile"),
+  uploadBtn: document.getElementById("uploadBtn"),
+  uploadResult: document.getElementById("uploadResult"),
+  uploadTableWrap: document.getElementById("uploadTableWrap"),
+  uploadTableBody: document.getElementById("uploadTableBody"),
+
   toast: document.getElementById("toast"),
 };
 
@@ -418,6 +426,114 @@ el.analyzeForm.addEventListener("submit", async (e) => {
     el.analyzeResult.className = "analyze-result decision-BLOCK";
     el.analyzeResult.textContent = `Error: ${err.message}`;
     el.analyzeResult.hidden = false;
+  }
+});
+
+// ---------- Upload dataset ----------
+
+const DEMO_CUSTOMERS = [
+  "CUST001", "CUST002", "CUST003", "CUST004", "CUST005",
+  "CUST006", "CUST007", "CUST008", "CUST009", "CUST010",
+];
+
+function parseCSV(text) {
+  const lines = text.split(/\r\n|\n/).filter((line) => line.trim().length > 0);
+  if (!lines.length) return [];
+
+  const headers = lines[0].split(",").map((h) => h.trim());
+  return lines.slice(1).map((line) => {
+    const cells = line.split(",").map((c) => c.trim());
+    const row = {};
+    headers.forEach((h, i) => {
+      row[h] = cells[i];
+    });
+    return row;
+  });
+}
+
+el.uploadForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const file = el.uFile.files[0];
+  if (!file) return;
+
+  el.uploadResult.hidden = false;
+  el.uploadResult.className = "upload-result";
+  el.uploadResult.textContent = "Reading file…";
+  el.uploadTableWrap.hidden = true;
+  el.uploadBtn.disabled = true;
+
+  try {
+    const text = await file.text();
+    const rows = parseCSV(text);
+
+    if (!rows.length) {
+      throw new Error("No rows found in that file.");
+    }
+
+    const truncated = rows.length > 500;
+    const useRows = rows.slice(0, 500);
+    const fixedCustomer = el.uCustomer.value !== "ROTATE" ? el.uCustomer.value : null;
+
+    const trueLabels = new Map(); // transaction_id -> "FRAUD" | "NORMAL" | null
+
+    const transactions = useRows.map((row, i) => {
+      const transactionId = `TXN${Date.now().toString(36).toUpperCase()}${i}`;
+      const customerId = fixedCustomer || DEMO_CUSTOMERS[i % DEMO_CUSTOMERS.length];
+
+      if (row.Class !== undefined && row.Class !== "") {
+        trueLabels.set(transactionId, Number(row.Class) === 1 ? "FRAUD" : "NORMAL");
+      }
+
+      const txn = { transaction_id: transactionId, customer_id: customerId };
+      for (const [key, value] of Object.entries(row)) {
+        if (key === "Class") continue;
+        txn[key] = value === "" ? 0 : Number(value);
+      }
+      if (txn.Amount !== undefined) txn.amount = txn.Amount;
+      return txn;
+    });
+
+    el.uploadResult.textContent = `Analyzing ${transactions.length} transaction${transactions.length === 1 ? "" : "s"}…`;
+
+    const { results, errors, summary } = await apiFetch("/api/transactions/batch-analyze", {
+      method: "POST",
+      body: JSON.stringify({ transactions }),
+    });
+
+    const truncNote = truncated ? ` (first 500 of ${rows.length} rows)` : "";
+    const errNote = errors.length ? `, ${errors.length} row${errors.length === 1 ? "" : "s"} skipped` : "";
+    el.uploadResult.innerHTML = `
+      Analyzed <strong>${summary.total}</strong> transaction${summary.total === 1 ? "" : "s"}${truncNote}${errNote} &mdash;
+      <strong>${summary.fraud_count}</strong> flagged as fraud (${summary.total ? ((summary.fraud_count / summary.total) * 100).toFixed(1) : 0}%).
+    `;
+
+    el.uploadTableBody.innerHTML = results
+      .map((r) => {
+        const decision = r.decision || "—";
+        const actual = trueLabels.get(r.transaction_id);
+        const actualCell = actual
+          ? `<span class="badge decision-${actual === "FRAUD" ? "BLOCK" : "ALLOW"}">${actual}</span>`
+          : "–";
+        return `
+          <tr>
+            <td><code>${r.transaction_id ?? "–"}</code></td>
+            <td>${r.customer_id ?? "–"}</td>
+            <td>${fmtAmount(r.amount)}</td>
+            <td>${fmtScore(r.fraud_score)}</td>
+            <td><span class="badge decision-${decision}">${decision}</span></td>
+            <td>${actualCell}</td>
+          </tr>`;
+      })
+      .join("");
+    el.uploadTableWrap.hidden = false;
+
+    showToast(`Uploaded dataset analyzed: ${summary.fraud_count}/${summary.total} flagged`);
+    await Promise.all([loadStats(), loadTransactions()]);
+  } catch (err) {
+    el.uploadResult.className = "upload-result error";
+    el.uploadResult.textContent = `Error: ${err.message}`;
+  } finally {
+    el.uploadBtn.disabled = false;
   }
 });
 

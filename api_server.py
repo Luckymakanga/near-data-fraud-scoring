@@ -23,13 +23,10 @@ from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 import json
-import threading
 from datetime import datetime, timedelta
 from functools import wraps
 import jwt
 import logging
-from queue import Queue
-import time
 
 # Configure logging
 logging.basicConfig(
@@ -60,13 +57,6 @@ class FraudDetectionAPI:
             key_func=get_remote_address,
             default_limits=["200 per day", "50 per hour"]
         )
-        
-        # Request queue for async processing
-        self.request_queue = Queue(maxsize=1000)
-        
-        # Worker thread for processing queued requests
-        self.worker_thread = threading.Thread(target=self._process_queue, daemon=True)
-        self.worker_thread.start()
         
         # Setup routes
         self._setup_routes()
@@ -147,32 +137,45 @@ class FraudDetectionAPI:
         @self.limiter.limit("20 per hour")
         @self._token_required
         def batch_analyze():
-            """Analyze multiple transactions"""
+            """
+            Analyze multiple transactions synchronously and return every
+            result in the response (e.g. for a bulk CSV upload). Rows
+            missing a required field are skipped and reported separately
+            rather than failing the whole batch.
+            """
             try:
                 data = request.get_json()
                 transactions = data.get('transactions', [])
-                
+
                 if not transactions:
                     return jsonify({'error': 'No transactions provided'}), 400
-                
-                if len(transactions) > 1000:
-                    return jsonify({'error': 'Maximum 1000 transactions per request'}), 400
-                
-                # Queue for async processing
-                job_id = f'JOB{int(time.time())}'
-                
-                self.request_queue.put({
-                    'job_id': job_id,
-                    'transactions': transactions,
-                    'timestamp': datetime.now()
-                })
-                
+
+                if len(transactions) > 500:
+                    return jsonify({'error': 'Maximum 500 transactions per request'}), 400
+
+                results = []
+                errors = []
+
+                for i, txn in enumerate(transactions):
+                    if not all(f in txn for f in ('customer_id', 'amount', 'transaction_id')):
+                        errors.append({'index': i, 'error': 'Missing customer_id, amount, or transaction_id'})
+                        continue
+                    results.append(self.system.process_transaction(txn))
+
+                fraud_count = sum(1 for r in results if r.get('is_fraud'))
+
                 return jsonify({
-                    'status': 'queued',
-                    'job_id': job_id,
-                    'message': f'Processing {len(transactions)} transactions'
-                }), 202
-                
+                    'status': 'success',
+                    'results': results,
+                    'errors': errors,
+                    'summary': {
+                        'total': len(results),
+                        'fraud_count': fraud_count,
+                        'skipped': len(errors)
+                    },
+                    'timestamp': datetime.now().isoformat()
+                }), 200
+
             except Exception as e:
                 logger.error(f"Error in batch analysis: {str(e)}")
                 return jsonify({'error': str(e)}), 500
@@ -339,28 +342,6 @@ class FraudDetectionAPI:
         def internal_error(error):
             logger.error(f"Internal server error: {error}")
             return jsonify({'error': 'Internal server error'}), 500
-    
-    def _process_queue(self):
-        """Process queued requests in background"""
-        logger.info("Queue processor started")
-        
-        while True:
-            try:
-                if not self.request_queue.empty():
-                    job = self.request_queue.get(timeout=1)
-                    
-                    logger.info(f"Processing job {job['job_id']} with {len(job['transactions'])} transactions")
-                    
-                    # Process batch
-                    results = self.system.batch_process_transactions(job['transactions'])
-                    
-                    logger.info(f"Job {job['job_id']} completed")
-                    
-                else:
-                    time.sleep(0.5)
-                    
-            except Exception as e:
-                logger.error(f"Error processing queue: {str(e)}")
     
     def run(self):
         """Start the API server"""
