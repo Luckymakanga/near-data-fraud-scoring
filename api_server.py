@@ -176,7 +176,30 @@ class FraudDetectionAPI:
             except Exception as e:
                 logger.error(f"Error in batch analysis: {str(e)}")
                 return jsonify({'error': str(e)}), 500
-        
+
+        # Recent transactions (for admin/dashboard views)
+        @self.app.route('/api/transactions/recent', methods=['GET'])
+        @self.limiter.limit("200 per hour")
+        @self._token_required
+        def get_recent_transactions():
+            """Get the most recent transactions, newest first"""
+            try:
+                limit = request.args.get('limit', default=50, type=int)
+                limit = max(1, min(limit, 200))
+
+                transactions = self.system.db_manager.get_latest_transactions(limit)
+
+                return jsonify({
+                    'status': 'success',
+                    'transactions': transactions,
+                    'count': len(transactions),
+                    'timestamp': datetime.now().isoformat()
+                }), 200
+
+            except Exception as e:
+                logger.error(f"Error fetching recent transactions: {str(e)}")
+                return jsonify({'error': str(e)}), 500
+
         # Statistics endpoints
         @self.app.route('/api/statistics/fraud', methods=['GET'])
         @self.limiter.limit("200 per hour")
