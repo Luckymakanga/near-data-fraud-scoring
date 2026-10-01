@@ -6,6 +6,13 @@ For detecting financial fraud in real-time
 Main Application Module
 """
 
+import sys
+if hasattr(sys.stdout, 'reconfigure'):
+    # Windows consoles default to a legacy codepage (e.g. cp1252) that can't
+    # encode the checkmark/emoji characters this system prints.
+    sys.stdout.reconfigure(encoding='utf-8')
+    sys.stderr.reconfigure(encoding='utf-8')
+
 import sqlite3
 import pandas as pd
 import numpy as np
