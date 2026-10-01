@@ -305,6 +305,107 @@ code {
 .analyze-result.decision-MONITOR { background: var(--blue-soft); border-color: var(--blue); }
 .analyze-result.decision-ALLOW { background: var(--green-soft); border-color: var(--green); }
 
+/* ---------- Customer lookup ---------- */
+
+.lookup-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.lookup-form select {
+  font: inherit;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  flex: 1 1 160px;
+}
+
+.profile-card {
+  margin-top: 14px;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.profile-card.not-found {
+  color: var(--text-dim);
+  font-size: 14px;
+}
+
+.profile-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.profile-head h3 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.profile-head .profile-id {
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+.risk-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.risk-badge.risk-LOW_RISK { background: var(--green-soft); color: var(--green); }
+.risk-badge.risk-NORMAL { background: var(--blue-soft); color: var(--blue); }
+.risk-badge.risk-HIGH_ACTIVITY { background: var(--yellow-soft); color: var(--yellow); }
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.profile-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.profile-field .field-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.profile-field .field-value {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.profile-merchants {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.merchant-chip {
+  background: var(--track);
+  color: var(--text-dim);
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+}
+
 /* ---------- Transactions table ---------- */
 
 .table-wrap {
