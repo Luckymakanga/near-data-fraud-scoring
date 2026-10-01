@@ -25,10 +25,9 @@ const el = {
 
   analyzeForm: document.getElementById("analyzeForm"),
   aCustomer: document.getElementById("aCustomer"),
-  aAmount: document.getElementById("aAmount"),
-  aMerchant: document.getElementById("aMerchant"),
-  aLocation: document.getElementById("aLocation"),
-  aHour: document.getElementById("aHour"),
+  loadSampleBtn: document.getElementById("loadSampleBtn"),
+  analyzeBtn: document.getElementById("analyzeBtn"),
+  samplePreview: document.getElementById("samplePreview"),
   analyzeResult: document.getElementById("analyzeResult"),
 
   autoRefresh: document.getElementById("autoRefresh"),
@@ -207,6 +206,14 @@ function fmtScore(n) {
   return `${(n * 100).toFixed(1)}%`;
 }
 
+function fmtTimeOfDay(seconds) {
+  if (typeof seconds !== "number") return "–";
+  const totalSeconds = Math.floor(seconds % 86400);
+  const h = String(Math.floor(totalSeconds / 3600)).padStart(2, "0");
+  const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0");
+  return `${h}:${m}`;
+}
+
 let decisionFilter = "";
 
 async function loadTransactions() {
@@ -230,7 +237,7 @@ async function loadTransactions() {
           <td>${fmtTime(tx.timestamp)}</td>
           <td><code>${tx.transaction_id ?? "–"}</code></td>
           <td>${customerId ? `<button type="button" class="customer-link" data-customer="${customerId}">${customerId}</button>` : "–"}</td>
-          <td>${tx.merchant_category ?? "–"}</td>
+          <td>${fmtTimeOfDay(tx.txn_time)}</td>
           <td>${fmtAmount(tx.amount)}</td>
           <td>${fmtScore(tx.fraud_score)}</td>
           <td><span class="badge decision-${decision}">${decision}</span></td>
@@ -296,8 +303,8 @@ async function lookupCustomer(customerId) {
     }
 
     const risk = profile.risk_level || "NORMAL";
-    const merchants = profile.usual_merchants && profile.usual_merchants.length
-      ? profile.usual_merchants.map((m) => `<span class="merchant-chip">${m}</span>`).join("")
+    const decisions = profile.recent_decisions && profile.recent_decisions.length
+      ? profile.recent_decisions.map((d) => `<span class="merchant-chip badge decision-${d}">${d}</span>`).join("")
       : `<span class="merchant-chip">none yet</span>`;
 
     el.profileCard.className = "profile-card";
@@ -312,7 +319,7 @@ async function lookupCustomer(customerId) {
       <div class="profile-grid">
         <div class="profile-field">
           <span class="field-label">Avg Transaction</span>
-          <span class="field-value">${fmtAmount(profile.avg_transaction)} UGX</span>
+          <span class="field-value">${fmtAmount(profile.avg_transaction)}</span>
         </div>
         <div class="profile-field">
           <span class="field-label">Last Location</span>
@@ -324,8 +331,8 @@ async function lookupCustomer(customerId) {
         </div>
       </div>
       <div class="profile-field">
-        <span class="field-label">Usual Merchants</span>
-        <div class="profile-merchants">${merchants}</div>
+        <span class="field-label">Recent Decisions</span>
+        <div class="profile-merchants">${decisions}</div>
       </div>
     `;
   } catch (err) {
@@ -342,18 +349,43 @@ el.lookupForm.addEventListener("submit", (e) => {
 
 // ---------- Analyze form ----------
 
+let currentSample = null;
+let currentSampleLabel = null;
+
+el.loadSampleBtn.addEventListener("click", async () => {
+  el.analyzeResult.hidden = true;
+  el.samplePreview.hidden = false;
+  el.samplePreview.textContent = "Loading a random transaction…";
+  el.analyzeBtn.disabled = true;
+
+  try {
+    const { transaction, true_label } = await apiFetch("/api/transactions/sample");
+    currentSample = transaction;
+    currentSampleLabel = true_label;
+
+    el.samplePreview.innerHTML = `
+      Loaded <code>${transaction.transaction_id}</code> &mdash;
+      amount ${fmtAmount(transaction.amount)}, time-of-day ${fmtTimeOfDay(transaction.Time)}.
+      Pick a customer, then Analyze to see the model's verdict.
+    `;
+    el.analyzeBtn.disabled = !el.aCustomer.value;
+  } catch (err) {
+    el.samplePreview.textContent = `Error: ${err.message}`;
+    currentSample = null;
+  }
+});
+
+el.aCustomer.addEventListener("change", () => {
+  el.analyzeBtn.disabled = !currentSample || !el.aCustomer.value;
+});
+
 el.analyzeForm.addEventListener("submit", async (e) => {
   e.preventDefault();
+  if (!currentSample) return;
   el.analyzeResult.hidden = true;
 
-  const body = {
-    transaction_id: `TXN${Date.now().toString(36).toUpperCase()}`,
-    customer_id: el.aCustomer.value,
-    amount: Number(el.aAmount.value),
-    merchant_category: el.aMerchant.value,
-    location: el.aLocation.value,
-    hour: el.aHour.value ? Number(el.aHour.value) : new Date().getHours(),
-  };
+  const body = { ...currentSample, customer_id: el.aCustomer.value };
+  delete body.timestamp;
 
   try {
     const { result } = await apiFetch("/api/transactions/analyze", {
@@ -361,16 +393,24 @@ el.analyzeForm.addEventListener("submit", async (e) => {
       body: JSON.stringify(body),
     });
 
+    const matchNote = currentSampleLabel
+      ? ` (actual label: <strong>${currentSampleLabel}</strong>)`
+      : "";
+
     el.analyzeResult.className = `analyze-result decision-${result.decision}`;
     el.analyzeResult.innerHTML = `
       <strong>${result.decision}</strong> — fraud score ${fmtScore(result.fraud_score)}
-      for <code>${result.transaction_id}</code> (${result.customer_id}, ${fmtAmount(result.amount)} UGX)<br/>
+      for <code>${result.transaction_id}</code> (${result.customer_id}, ${fmtAmount(result.amount)})${matchNote}<br/>
       Flags: ${Object.entries(result.sql_flags || {})
         .filter(([, v]) => v)
         .map(([k]) => k)
         .join(", ") || "none"}
     `;
     el.analyzeResult.hidden = false;
+
+    currentSample = null;
+    currentSampleLabel = null;
+    el.analyzeBtn.disabled = true;
 
     showToast("Transaction analyzed");
     await Promise.all([loadStats(), loadTransactions()]);

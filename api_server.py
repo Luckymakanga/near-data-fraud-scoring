@@ -125,7 +125,7 @@ class FraudDetectionAPI:
                 transaction_data = request.get_json()
                 
                 # Validate transaction
-                required_fields = ['customer_id', 'amount', 'transaction_id', 'merchant_category']
+                required_fields = ['customer_id', 'amount', 'transaction_id']
                 if not all(f in transaction_data for f in required_fields):
                     return jsonify({'error': 'Missing required fields'}), 400
                 
@@ -203,6 +203,29 @@ class FraudDetectionAPI:
 
             except Exception as e:
                 logger.error(f"Error fetching recent transactions: {str(e)}")
+                return jsonify({'error': str(e)}), 500
+
+        # Sample a real transaction from the training dataset (for the
+        # Analyze form - its predictive features are anonymized PCA
+        # components, so there's nothing meaningful an admin could type by hand)
+        @self.app.route('/api/transactions/sample', methods=['GET'])
+        @self.limiter.limit("200 per hour")
+        @self._token_required
+        def get_sample_transaction():
+            """Get one random real transaction from the training dataset, not yet analyzed"""
+            try:
+                sample = self.system.transaction_processor.generate_sample_transactions(n=1)[0]
+                true_label = 'FRAUD' if sample.pop('is_fraud_label') else 'NORMAL'
+                sample['timestamp'] = sample['timestamp'].isoformat()
+
+                return jsonify({
+                    'status': 'success',
+                    'transaction': sample,
+                    'true_label': true_label
+                }), 200
+
+            except Exception as e:
+                logger.error(f"Error sampling transaction: {str(e)}")
                 return jsonify({'error': str(e)}), 500
 
         # Statistics endpoints

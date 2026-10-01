@@ -83,26 +83,29 @@ class FraudAnalytics:
         
         patterns = []
         
-        # Pattern 1: Large transactions
-        large_fraud = sum(1 for t in fraudulent if t['amount'] > 1000000)
+        # Pattern 1: Large transactions (above the 99th percentile for this
+        # dataset's amount distribution)
+        large_fraud = sum(1 for t in fraudulent if t['amount'] > 1000)
         patterns.append({
-            'pattern': 'Large Transaction Amounts (>1M UGX)',
+            'pattern': 'Large Transaction Amounts (>1,000)',
             'count': large_fraud
         })
-        
-        # Pattern 2: Unknown merchants
-        unknown_fraud = sum(1 for t in fraudulent if 'Unknown' in t.get('merchant_category', ''))
+
+        # Pattern 2: Off-hours transactions
+        off_hours_fraud = sum(
+            1 for t in fraudulent
+            if t.get('txn_time') is not None and not (6 <= int((t['txn_time'] % 86400) // 3600) <= 22)
+        )
         patterns.append({
-            'pattern': 'Unknown/Suspicious Merchants',
-            'count': unknown_fraud
-        })
-        
-        # Pattern 3: Off-hours transactions
-        # (Would need timestamp parsing in full implementation)
-        off_hours_fraud = sum(1 for t in fraudulent if t.get('location') != 'Kampala')
-        patterns.append({
-            'pattern': 'Unusual Geographic Locations',
+            'pattern': 'Off-Hours Transactions',
             'count': off_hours_fraud
+        })
+
+        # Pattern 3: High-confidence fraud (model very sure, not just over threshold)
+        high_confidence_fraud = sum(1 for t in fraudulent if (t.get('fraud_score') or 0) > 0.9)
+        patterns.append({
+            'pattern': 'High-Confidence Fraud Score (>90%)',
+            'count': high_confidence_fraud
         })
         
         # Pattern 4: High velocity

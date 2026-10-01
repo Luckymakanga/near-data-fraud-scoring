@@ -25,6 +25,8 @@ from imblearn.over_sampling import ADASYN
 import warnings
 warnings.filterwarnings('ignore')
 
+from feature_engineering import FEATURE_NAMES, extract_creditcard_features
+
 class AdvancedFraudDetectionModel:
     """
     Advanced ML model with multiple algorithms and ensemble methods
@@ -37,44 +39,27 @@ class AdvancedFraudDetectionModel:
     - Stacking ensemble
     """
     
-    def __init__(self, model_path='advanced_fraud_model.pkl'):
+    def __init__(self, model_path='advanced_fraud_model.pkl', data_path='data/creditcard_sample.csv'):
         """Initialize advanced model"""
         self.model_path = model_path
+        self.data_path = data_path
         self.models = {}
         self.scaler = RobustScaler()  # More robust to outliers
-        self.feature_names = [
-            'amount', 'customer_age', 'account_tenure', 'transaction_frequency',
-            'avg_transaction_size', 'location_risk', 'time_risk', 'merchant_risk',
-            'device_consistency', 'velocity_score', 'distance_score', 'behavioral_score'
-        ]
+        self.feature_names = FEATURE_NAMES
         self.is_trained = False
         self.feature_importances = {}
-    
-    def generate_advanced_training_data(self, n_samples=5000):
+
+    def load_training_data(self):
         """
-        Generate synthetic training data with more sophisticated patterns
+        Load the credit card fraud training sample and turn each row into
+        the model's feature vector via the same extract_creditcard_features()
+        used for live transactions, so training and inference never diverge.
         """
-        np.random.seed(42)
-        
-        # Base features
-        X = np.random.randn(n_samples, len(self.feature_names))
-        
-        # Create fraudulent patterns using non-linear relationships
-        fraud_mask = (
-            (X[:, 0] > 2) |  # Large amounts
-            (X[:, 7] > 1.5) |  # High merchant risk
-            ((X[:, 3] > 1.5) & (X[:, 4] < -1)) |  # Velocity + small avg size
-            ((X[:, 5] > 1) & (X[:, 6] > 1)) |  # Location + time risk
-            ((X[:, 9] > 2) & (X[:, 10] > 1.5)) |  # Velocity + distance
-            ((X[:, 8] < -1.5) & (X[:, 11] > 1.5))  # Device inconsistency + behavior
-        )
-        
-        y = fraud_mask.astype(int)
-        
-        # Add random noise (misclassification)
-        noise_indices = np.random.choice(n_samples, n_samples // 20, replace=False)
-        y[noise_indices] = 1 - y[noise_indices]
-        
+        df = pd.read_csv(self.data_path)
+
+        X = np.array([extract_creditcard_features(row) for row in df.to_dict('records')])
+        y = df['Class'].to_numpy()
+
         return X, y
     
     def train_ensemble_model(self):
@@ -85,34 +70,39 @@ class AdvancedFraudDetectionModel:
         print("TRAINING ADVANCED ENSEMBLE FRAUD DETECTION MODEL")
         print("="*80)
         
-        # Generate training data
-        X, y = self.generate_advanced_training_data(n_samples=5000)
+        # Load training data
+        X, y = self.load_training_data()
         
         print(f"\n[Data Preparation]")
         print(f"  Total samples: {len(X)}")
         print(f"  Features: {len(self.feature_names)}")
         print(f"  Fraud ratio: {y.sum()/len(y):.2%}")
         
-        # Handle class imbalance with ADASYN (more advanced than SMOTE)
+        # Train/test split - BEFORE any resampling or scaling, so no
+        # information about the test set (real or ADASYN-synthesized
+        # from test neighbors) ever reaches training.
+        X_train_raw, X_test_raw, y_train, y_test = train_test_split(
+            X, y, test_size=0.2, random_state=42, stratify=y
+        )
+
+        # Handle class imbalance with ADASYN (more advanced than SMOTE) -
+        # fit only on the training split
         print(f"\n[Class Balancing]")
         print(f"  Applying ADASYN for advanced class imbalance handling...")
         adasyn = ADASYN(random_state=42, n_neighbors=5)
-        
+
         try:
-            X_balanced, y_balanced = adasyn.fit_resample(X, y)
-            print(f"  ✓ Balanced samples: {len(X_balanced)}")
-            print(f"  ✓ Balanced fraud ratio: {y_balanced.sum()/len(y_balanced):.2%}")
+            X_train_balanced, y_train = adasyn.fit_resample(X_train_raw, y_train)
+            print(f"  ✓ Balanced samples: {len(X_train_balanced)}")
+            print(f"  ✓ Balanced fraud ratio: {y_train.sum()/len(y_train):.2%}")
         except:
-            X_balanced, y_balanced = X, y
-        
-        # Feature scaling
-        X_scaled = self.scaler.fit_transform(X_balanced)
-        
-        # Train/test split
-        X_train, X_test, y_train, y_test = train_test_split(
-            X_scaled, y_balanced, test_size=0.2, random_state=42, stratify=y_balanced
-        )
-        
+            X_train_balanced = X_train_raw
+
+        # Feature scaling - fit on the (balanced) training data only,
+        # then apply that same transform to the untouched test data
+        X_train = self.scaler.fit_transform(X_train_balanced)
+        X_test = self.scaler.transform(X_test_raw)
+
         print(f"\n[Model Training]")
         print(f"  Training set: {len(X_train)} | Test set: {len(X_test)}")
         

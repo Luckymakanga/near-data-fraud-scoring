@@ -66,31 +66,19 @@
 
     <section class="panel">
       <h2>Analyze a Transaction</h2>
+      <p class="panel-hint">This model's predictive features are anonymized PCA components from the source dataset &mdash; there's nothing meaningful to type by hand. Instead, load a real transaction and see the model's live verdict on it.</p>
       <form class="analyze-form" id="analyzeForm">
         <select id="aCustomer" required>
-          <option value="">Customer&hellip;</option>
+          <option value="">Assign to customer&hellip;</option>
           <option>CUST001</option><option>CUST002</option><option>CUST003</option>
           <option>CUST004</option><option>CUST005</option><option>CUST006</option>
           <option>CUST007</option><option>CUST008</option><option>CUST009</option>
           <option>CUST010</option>
         </select>
-        <input type="number" id="aAmount" placeholder="Amount (UGX)" min="0" step="1000" required />
-        <select id="aMerchant" required>
-          <option value="">Merchant&hellip;</option>
-          <option>Supermarket</option><option>Petrol Station</option><option>Restaurant</option>
-          <option>Mobile Money</option><option>Pharmacy</option><option>Utility Payment</option>
-          <option>School Fee</option><option>Hospital</option><option>Grocery</option>
-          <option>Hardware</option><option>Clothing</option><option>Entertainment</option>
-          <option>Unknown Merchant</option>
-        </select>
-        <select id="aLocation">
-          <option>Kampala</option><option>Wakiso</option><option>Entebbe</option>
-          <option>Jinja</option><option>Masaka</option><option>Mbale</option>
-          <option>Kigali</option><option>Mbarara</option><option>Fort Portal</option><option>Soroti</option>
-        </select>
-        <input type="number" id="aHour" placeholder="Hour (0-23)" min="0" max="23" />
-        <button type="submit" class="btn primary">Analyze</button>
+        <button type="button" class="btn ghost" id="loadSampleBtn">Load Random Transaction</button>
+        <button type="submit" class="btn primary" id="analyzeBtn" disabled>Analyze</button>
       </form>
+      <div class="sample-preview" id="samplePreview" hidden></div>
       <div class="analyze-result" id="analyzeResult" hidden></div>
     </section>
 
@@ -131,8 +119,8 @@
               <th>Time</th>
               <th>Transaction</th>
               <th>Customer</th>
-              <th>Merchant</th>
-              <th>Amount (UGX)</th>
+              <th>Time of Day</th>
+              <th>Amount</th>
               <th>Fraud Score</th>
               <th>Decision</th>
             </tr>

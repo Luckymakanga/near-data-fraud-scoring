@@ -64,8 +64,7 @@ class DatabaseManager:
                     transaction_id TEXT PRIMARY KEY,
                     customer_id TEXT NOT NULL,
                     amount REAL NOT NULL,
-                    merchant_category TEXT,
-                    location TEXT,
+                    txn_time REAL,
                     timestamp TIMESTAMP,
                     device_id TEXT,
                     ip_address TEXT,
@@ -132,17 +131,21 @@ class DatabaseManager:
     def _insert_sample_customers_locked(self):
         """Insert sample customer data. Caller must already hold self._lock."""
 
+        # avg_transaction values are scaled to match the credit card fraud
+        # dataset's amount range (mean ~87, 99th percentile ~1,025), not
+        # the Uganda-shilling amounts this system used before switching to
+        # real training data.
         sample_customers = [
-            ('CUST001', 'John Ssemanda', 'Premium', 100000, 'Kampala', 0.05, 'NORMAL'),
-            ('CUST002', 'Mary Nakamatte', 'Standard', 50000, 'Wakiso', 0.10, 'NORMAL'),
-            ('CUST003', 'David Okonkwo', 'Standard', 75000, 'Kampala', 0.08, 'NORMAL'),
-            ('CUST004', 'Grace Kipchoge', 'Premium', 200000, 'Kampala', 0.03, 'LOW_RISK'),
-            ('CUST005', 'Peter Mwangi', 'Standard', 60000, 'Entebbe', 0.12, 'NORMAL'),
-            ('CUST006', 'Joyce Nakawuka', 'Standard', 45000, 'Kampala', 0.15, 'HIGH_ACTIVITY'),
-            ('CUST007', 'Samuel Banda', 'Premium', 150000, 'Kampala', 0.04, 'LOW_RISK'),
-            ('CUST008', 'Ruth Nyambura', 'Standard', 55000, 'Jinja', 0.09, 'NORMAL'),
-            ('CUST009', 'Charles Mbewe', 'Standard', 70000, 'Kampala', 0.07, 'NORMAL'),
-            ('CUST010', 'Patricia Ochieng', 'Premium', 180000, 'Kampala', 0.02, 'LOW_RISK'),
+            ('CUST001', 'John Ssemanda', 'Premium', 100, 'Kampala', 0.05, 'NORMAL'),
+            ('CUST002', 'Mary Nakamatte', 'Standard', 50, 'Wakiso', 0.10, 'NORMAL'),
+            ('CUST003', 'David Okonkwo', 'Standard', 75, 'Kampala', 0.08, 'NORMAL'),
+            ('CUST004', 'Grace Kipchoge', 'Premium', 200, 'Kampala', 0.03, 'LOW_RISK'),
+            ('CUST005', 'Peter Mwangi', 'Standard', 60, 'Entebbe', 0.12, 'NORMAL'),
+            ('CUST006', 'Joyce Nakawuka', 'Standard', 45, 'Kampala', 0.15, 'HIGH_ACTIVITY'),
+            ('CUST007', 'Samuel Banda', 'Premium', 150, 'Kampala', 0.04, 'LOW_RISK'),
+            ('CUST008', 'Ruth Nyambura', 'Standard', 55, 'Jinja', 0.09, 'NORMAL'),
+            ('CUST009', 'Charles Mbewe', 'Standard', 70, 'Kampala', 0.07, 'NORMAL'),
+            ('CUST010', 'Patricia Ochieng', 'Premium', 180, 'Kampala', 0.02, 'LOW_RISK'),
         ]
 
         for customer_id, name, account_type, avg_trans, location, unusual_freq, risk in sample_customers:
@@ -165,15 +168,14 @@ class DatabaseManager:
             try:
                 self.cursor.execute('''
                     INSERT INTO transactions
-                    (transaction_id, customer_id, amount, merchant_category, location,
+                    (transaction_id, customer_id, amount, txn_time,
                      timestamp, fraud_score, is_fraud, decision, status)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (
                     transaction_data.get('transaction_id'),
                     transaction_data.get('customer_id'),
                     transaction_data.get('amount'),
-                    transaction_data.get('merchant_category'),
-                    transaction_data.get('location', 'Kampala'),
+                    transaction_data.get('txn_time'),
                     transaction_data.get('timestamp'),
                     transaction_data.get('fraud_score'),
                     1 if transaction_data.get('is_fraud') else 0,
@@ -220,13 +222,13 @@ class DatabaseManager:
                 if customer:
                     # Get recent transaction history
                     self.cursor.execute('''
-                        SELECT merchant_category FROM transactions
+                        SELECT decision FROM transactions
                         WHERE customer_id = ?
                         ORDER BY timestamp DESC
                         LIMIT 20
                     ''', (customer_id,))
 
-                    recent_merchants = [row[0] for row in self.cursor.fetchall()]
+                    recent_decisions = [row[0] for row in self.cursor.fetchall() if row[0]]
 
                     return {
                         'customer_id': customer['customer_id'],
@@ -237,7 +239,7 @@ class DatabaseManager:
                         'last_transaction_time': customer['last_transaction_time'],
                         'unusual_hours_frequency': customer['unusual_hours_frequency'],
                         'risk_level': customer['risk_level'],
-                        'usual_merchants': list(set(recent_merchants[:10]))
+                        'recent_decisions': recent_decisions[:10]
                     }
                 else:
                     # Return default profile for unknown customer
@@ -246,7 +248,7 @@ class DatabaseManager:
                         'avg_transaction': 100000,
                         'last_location': 'Kampala',
                         'unusual_hours_frequency': 0.1,
-                        'usual_merchants': [],
+                        'recent_decisions': [],
                         'last_transaction_time': datetime.now()
                     }
             except sqlite3.Error as e:
