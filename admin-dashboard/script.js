@@ -1,6 +1,10 @@
-const API_BASE = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-  ? "http://localhost:5000"
-  : `${window.location.protocol}//${window.location.hostname}:5000`;
+// window.FRAUD_API_BASE (set in config.js) takes priority once deployed -
+// the API and this static dashboard live on different hosts in production,
+// so we can't just guess the API's URL from window.location like we can locally.
+const API_BASE = window.FRAUD_API_BASE ||
+  (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+    ? "http://localhost:5000"
+    : `${window.location.protocol}//${window.location.hostname}:5000`);
 
 const TOKEN_KEY = "fraudAdmin.token";
 

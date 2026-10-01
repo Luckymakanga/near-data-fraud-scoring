@@ -27,20 +27,29 @@ class DatabaseManager:
 
     def __init__(self, minconn=1, maxconn=10):
         """
-        Initialize a pooled PostgreSQL connection. Connection details come
-        from the environment (PGHOST/PGPORT/PGDATABASE/PGUSER/PGPASSWORD,
-        loaded from .env) rather than a single shared connection, so Flask's
-        request threads each get their own connection instead of racing on
-        one cursor.
+        Initialize a pooled PostgreSQL connection, rather than a single
+        shared connection, so Flask's request threads each get their own
+        connection instead of racing on one cursor.
+
+        Connection details come from the environment (loaded from .env
+        locally). If DATABASE_URL is set (the standard connection-string
+        format used by Neon, Render, Railway, etc. - e.g.
+        postgresql://user:password@host/dbname?sslmode=require) it takes
+        priority; otherwise falls back to discrete PGHOST/PGPORT/
+        PGDATABASE/PGUSER/PGPASSWORD variables for local dev.
         """
-        self.pool = psycopg2.pool.ThreadedConnectionPool(
-            minconn, maxconn,
-            host=os.environ.get('PGHOST', 'localhost'),
-            port=os.environ.get('PGPORT', '5432'),
-            dbname=os.environ.get('PGDATABASE', 'fraud_detection'),
-            user=os.environ.get('PGUSER', 'fraud_app'),
-            password=os.environ.get('PGPASSWORD'),
-        )
+        database_url = os.environ.get('DATABASE_URL')
+        if database_url:
+            self.pool = psycopg2.pool.ThreadedConnectionPool(minconn, maxconn, dsn=database_url)
+        else:
+            self.pool = psycopg2.pool.ThreadedConnectionPool(
+                minconn, maxconn,
+                host=os.environ.get('PGHOST', 'localhost'),
+                port=os.environ.get('PGPORT', '5432'),
+                dbname=os.environ.get('PGDATABASE', 'fraud_detection'),
+                user=os.environ.get('PGUSER', 'fraud_app'),
+                password=os.environ.get('PGPASSWORD'),
+            )
 
     def create_tables(self):
         """Create all necessary database tables with optimized indexes"""

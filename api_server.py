@@ -18,6 +18,7 @@ if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')
     sys.stderr.reconfigure(encoding='utf-8')
 
+import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_limiter import Limiter
@@ -44,7 +45,7 @@ class FraudDetectionAPI:
     def __init__(self, fraud_detection_system, port=5000, debug=False):
         """Initialize API server"""
         self.app = Flask(__name__)
-        self.app.config['SECRET_KEY'] = 'uganda-fraud-detection-secret-key'
+        self.app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'uganda-fraud-detection-secret-key')
         CORS(self.app)
         
         self.system = fraud_detection_system
@@ -344,19 +345,25 @@ class FraudDetectionAPI:
             return jsonify({'error': 'Internal server error'}), 500
     
     def run(self):
-        """Start the API server"""
+        """Start the API server using Flask's own dev server (local use only)"""
         logger.info(f"Starting Fraud Detection API on port {self.port}")
         self.app.run(host='0.0.0.0', port=self.port, debug=self.debug)
 
 
-# Example usage
+# Module-level system + app setup, so a production WSGI server (gunicorn,
+# per the Procfile/render.yaml) can import this module and serve `app`
+# directly without ever calling .run(). This also means training happens
+# once, here, at import time, regardless of how the module is loaded.
+from fraud_detection_system import FraudDetectionSystem
+
+system = FraudDetectionSystem()
+system.setup_system()
+
+_debug = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
+_port = int(os.environ.get('PORT', 5000))
+
+api = FraudDetectionAPI(system, port=_port, debug=_debug)
+app = api.app
+
 if __name__ == '__main__':
-    from fraud_detection_system import FraudDetectionSystem
-    
-    # Initialize fraud detection system
-    system = FraudDetectionSystem()
-    system.setup_system()
-    
-    # Initialize and run API
-    api = FraudDetectionAPI(system, port=5000, debug=True)
     api.run()

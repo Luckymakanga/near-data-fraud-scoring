@@ -1,0 +1,24 @@
+services:
+  - name: fraud-detection-api
+    type: web
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --workers 1 --timeout 180 api_server:app
+    envVars:
+      # Render's own free Postgres expires 30 days after creation (14-day
+      # grace period, then deletion) - not provisioned here. Point this at
+      # a free Neon database instead (no expiration): create one at
+      # neon.tech, copy its connection string, and paste it here as a
+      # plain env var value in the Render dashboard after this Blueprint
+      # is applied (sync: false means Render won't try to auto-fill it).
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+
+  - name: fraud-detection-dashboard
+    type: web
+    runtime: static
+    buildCommand: ""
+    staticPublishPath: ./admin-dashboard

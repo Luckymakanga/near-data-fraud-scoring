@@ -6,7 +6,6 @@ Generates fraud detection reports and business metrics
 for Uganda's banking sector
 """
 
-import sqlite3
 from datetime import datetime
 import statistics
 
