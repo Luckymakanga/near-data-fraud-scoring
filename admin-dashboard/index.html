@@ -95,6 +95,21 @@
     </section>
 
     <section class="panel">
+      <h2>Customer Risk Profile</h2>
+      <form class="lookup-form" id="lookupForm">
+        <select id="lCustomer" required>
+          <option value="">Customer&hellip;</option>
+          <option>CUST001</option><option>CUST002</option><option>CUST003</option>
+          <option>CUST004</option><option>CUST005</option><option>CUST006</option>
+          <option>CUST007</option><option>CUST008</option><option>CUST009</option>
+          <option>CUST010</option>
+        </select>
+        <button type="submit" class="btn primary">Look Up</button>
+      </form>
+      <div class="profile-card" id="profileCard" hidden></div>
+    </section>
+
+    <section class="panel">
       <div class="panel-header">
         <h2>Recent Transactions</h2>
         <label class="auto-refresh">

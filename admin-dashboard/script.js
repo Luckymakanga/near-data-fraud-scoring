@@ -35,6 +35,10 @@ const el = {
   txTableBody: document.getElementById("txTableBody"),
   patternList: document.getElementById("patternList"),
 
+  lookupForm: document.getElementById("lookupForm"),
+  lCustomer: document.getElementById("lCustomer"),
+  profileCard: document.getElementById("profileCard"),
+
   toast: document.getElementById("toast"),
 };
 
@@ -213,11 +217,12 @@ async function loadTransactions() {
   el.txTableBody.innerHTML = transactions
     .map((tx) => {
       const decision = tx.decision || "—";
+      const customerId = tx.customer_id ?? "";
       return `
         <tr>
           <td>${fmtTime(tx.timestamp)}</td>
           <td><code>${tx.transaction_id ?? "–"}</code></td>
-          <td>${tx.customer_id ?? "–"}</td>
+          <td>${customerId ? `<button type="button" class="customer-link" data-customer="${customerId}">${customerId}</button>` : "–"}</td>
           <td>${tx.merchant_category ?? "–"}</td>
           <td>${fmtAmount(tx.amount)}</td>
           <td>${fmtScore(tx.fraud_score)}</td>
@@ -226,6 +231,14 @@ async function loadTransactions() {
     })
     .join("");
 }
+
+el.txTableBody.addEventListener("click", (e) => {
+  const link = e.target.closest(".customer-link");
+  if (!link) return;
+  el.lCustomer.value = link.dataset.customer;
+  lookupCustomer(link.dataset.customer);
+  el.profileCard.scrollIntoView({ behavior: "smooth", block: "center" });
+});
 
 // ---------- Fraud patterns ----------
 
@@ -242,6 +255,72 @@ async function loadPatterns() {
     .map((p) => `<li><span>${p.pattern}</span><span class="pattern-count">${p.count} cases</span></li>`)
     .join("");
 }
+
+// ---------- Customer risk profile lookup ----------
+
+function fmtFreq(n) {
+  if (typeof n !== "number") return "–";
+  return `${(n * 100).toFixed(0)}%`;
+}
+
+async function lookupCustomer(customerId) {
+  el.profileCard.hidden = false;
+  el.profileCard.className = "profile-card";
+  el.profileCard.textContent = "Loading…";
+
+  try {
+    const { profile } = await apiFetch(`/api/customers/${encodeURIComponent(customerId)}/risk-profile`);
+
+    if (!profile || !profile.name) {
+      el.profileCard.className = "profile-card not-found";
+      el.profileCard.textContent = `No profile on file for ${customerId} — this customer has no transaction history yet.`;
+      return;
+    }
+
+    const risk = profile.risk_level || "NORMAL";
+    const merchants = profile.usual_merchants && profile.usual_merchants.length
+      ? profile.usual_merchants.map((m) => `<span class="merchant-chip">${m}</span>`).join("")
+      : `<span class="merchant-chip">none yet</span>`;
+
+    el.profileCard.className = "profile-card";
+    el.profileCard.innerHTML = `
+      <div class="profile-head">
+        <div>
+          <h3>${profile.name}</h3>
+          <span class="profile-id">${profile.customer_id} &middot; ${profile.account_type || "–"}</span>
+        </div>
+        <span class="risk-badge risk-${risk}">${risk}</span>
+      </div>
+      <div class="profile-grid">
+        <div class="profile-field">
+          <span class="field-label">Avg Transaction</span>
+          <span class="field-value">${fmtAmount(profile.avg_transaction)} UGX</span>
+        </div>
+        <div class="profile-field">
+          <span class="field-label">Last Location</span>
+          <span class="field-value">${profile.last_location || "–"}</span>
+        </div>
+        <div class="profile-field">
+          <span class="field-label">Unusual Hours Freq.</span>
+          <span class="field-value">${fmtFreq(profile.unusual_hours_frequency)}</span>
+        </div>
+      </div>
+      <div class="profile-field">
+        <span class="field-label">Usual Merchants</span>
+        <div class="profile-merchants">${merchants}</div>
+      </div>
+    `;
+  } catch (err) {
+    el.profileCard.className = "profile-card not-found";
+    el.profileCard.textContent = `Error: ${err.message}`;
+  }
+}
+
+el.lookupForm.addEventListener("submit", (e) => {
+  e.preventDefault();
+  if (!el.lCustomer.value) return;
+  lookupCustomer(el.lCustomer.value);
+});
 
 // ---------- Analyze form ----------
 
