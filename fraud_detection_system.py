@@ -15,7 +15,7 @@ from pathlib import Path
 
 # Import custom modules
 from database_module import DatabaseManager
-from ml_fraud_detector import FraudDetectionModel
+from advanced_ml_models import AdvancedFraudDetectionModel
 from transaction_processor import TransactionProcessor
 from analytics import FraudAnalytics
 
@@ -46,7 +46,7 @@ class FraudDetectionSystem:
         self.db_manager = DatabaseManager(db_path)
         
         print("[2/4] Initializing Machine Learning Model...")
-        self.ml_model = FraudDetectionModel(model_path)
+        self.ml_model = AdvancedFraudDetectionModel(model_path)
         
         print("[3/4] Initializing Transaction Processor...")
         self.transaction_processor = TransactionProcessor(self.db_manager)
@@ -69,7 +69,7 @@ class FraudDetectionSystem:
         
         # Train the ML model with sample data
         print("\n[Step 2] Training machine learning model...")
-        self.ml_model.train_model()
+        self.ml_model.train_ensemble_model()
         print("✓ ML model trained and ready")
         
         # Generate sample transactions
@@ -111,7 +111,7 @@ class FraudDetectionSystem:
         )
         
         # Get ML fraud prediction (Theme 3: Machine Learning)
-        fraud_probability = self.ml_model.predict_fraud(features)
+        fraud_probability = self.ml_model.predict_fraud_advanced(features)
         is_fraud = fraud_probability > 0.5
         
         # Combine SQL flags and ML prediction (Theme 6: Handling Challenges)
