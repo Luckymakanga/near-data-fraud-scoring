@@ -11,6 +11,13 @@ Features:
 - Request queuing
 """
 
+import sys
+if hasattr(sys.stdout, 'reconfigure'):
+    # Windows consoles default to a legacy codepage (e.g. cp1252) that can't
+    # encode the checkmark/emoji characters this system prints.
+    sys.stdout.reconfigure(encoding='utf-8')
+    sys.stderr.reconfigure(encoding='utf-8')
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_limiter import Limiter
