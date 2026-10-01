@@ -5,6 +5,19 @@ A sophisticated, production-ready fraud detection platform designed specifically
 
 ---
 
+## 🌐 LIVE DEPLOYMENT
+
+| Service | URL |
+|---|---|
+| Admin Dashboard | [fraud-detection-dashboard-gp35.onrender.com](https://fraud-detection-dashboard-gp35.onrender.com) |
+| API | [fraud-detection-api-865q.onrender.com](https://fraud-detection-api-865q.onrender.com) |
+
+Hosted on Render (free tier) with a Neon PostgreSQL database (free tier, no expiration). Log in with `admin` / `admin`.
+
+**Note:** the free Render services sleep after 15 minutes of inactivity. The first request after idle will be slow (cold start + ~60s model retraining) - that's expected, not a bug.
+
+---
+
 ## 🎯 PROJECT OVERVIEW
 
 This prototype demonstrates a **COMPLEX (Enterprise-Grade)** fraud detection system with:
