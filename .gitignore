@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+*.db
+*.pkl
+uganda_fraud_detection_results.json

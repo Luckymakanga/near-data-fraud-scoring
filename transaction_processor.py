@@ -119,10 +119,9 @@ class TransactionProcessor:
         )
         transaction_frequency = len(recent_transactions)
         
-        # Feature 5: Average transaction size variance
+        # Feature 5: Average transaction size
         avg_transaction_size = customer_profile.get('avg_transaction', 100000)
-        size_variance = abs(amount - avg_transaction_size) / max(avg_transaction_size, 1)
-        
+
         # Feature 6: Location risk (Theme 4: Behavioral Analysis)
         location_risk = 0.1  # Low risk for normal locations
         if transaction['location'] not in ['Kampala', 'Wakiso']:
@@ -144,21 +143,31 @@ class TransactionProcessor:
         
         # Feature 10: Velocity score (multiple transactions in short time)
         velocity_score = min(transaction_frequency / 5, 1.0)  # Normalized
-        
-        # Combine into feature vector
+
+        # Feature 11: Distance/geographic score
+        last_location = customer_profile.get('last_location', 'Kampala')
+        distance_score = 1.0 if transaction['location'] != last_location else 0.0
+
+        # Feature 12: Behavioral deviation score
+        behavioral_score = self.calculate_behavioral_score(transaction['customer_id'], transaction)
+
+        # Combine into feature vector - order must match
+        # AdvancedFraudDetectionModel.feature_names in advanced_ml_models.py
         features = np.array([
-            amount_ratio,           # Feature 1
-            customer_age,           # Feature 2
-            account_tenure,         # Feature 3
-            transaction_frequency,  # Feature 4
-            size_variance,          # Feature 5
-            location_risk,          # Feature 6
-            time_risk,              # Feature 7
-            merchant_risk,          # Feature 8
-            device_consistency,     # Feature 9
-            velocity_score          # Feature 10
+            amount_ratio,           # Feature 1: amount
+            customer_age,           # Feature 2: customer_age
+            account_tenure,         # Feature 3: account_tenure
+            transaction_frequency,  # Feature 4: transaction_frequency
+            avg_transaction_size,   # Feature 5: avg_transaction_size
+            location_risk,          # Feature 6: location_risk
+            time_risk,              # Feature 7: time_risk
+            merchant_risk,          # Feature 8: merchant_risk
+            device_consistency,     # Feature 9: device_consistency
+            velocity_score,         # Feature 10: velocity_score
+            distance_score,         # Feature 11: distance_score
+            behavioral_score        # Feature 12: behavioral_score
         ])
-        
+
         return features
     
     def detect_anomalies(self, customer_id, transaction):
