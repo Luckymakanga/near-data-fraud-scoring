@@ -1,0 +1,40 @@
+services:
+  - name: fraud-detection-api
+    type: web
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --workers 1 --timeout 180 api_server:app
+    envVars:
+      - key: PGHOST
+        fromDatabase:
+          name: fraud-detection-db
+          property: host
+      - key: PGPORT
+        fromDatabase:
+          name: fraud-detection-db
+          property: port
+      - key: PGDATABASE
+        fromDatabase:
+          name: fraud-detection-db
+          property: database
+      - key: PGUSER
+        fromDatabase:
+          name: fraud-detection-db
+          property: user
+      - key: PGPASSWORD
+        fromDatabase:
+          name: fraud-detection-db
+          property: password
+      - key: SECRET_KEY
+        generateValue: true
+
+  - name: fraud-detection-dashboard
+    type: web
+    runtime: static
+    buildCommand: ""
+    staticPublishPath: ./admin-dashboard
+
+databases:
+  - name: fraud-detection-db
+    plan: free
