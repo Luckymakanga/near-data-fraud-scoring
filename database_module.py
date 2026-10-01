@@ -9,41 +9,47 @@ Handles all database operations including:
 - SQL query optimization
 """
 
-import sqlite3
-import pandas as pd
-import threading
+import os
+import psycopg2
+from psycopg2 import pool
+from psycopg2.extras import RealDictCursor
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
 import json
+
+load_dotenv()
 
 class DatabaseManager:
     """
-    Manages SQLite database for fraud detection system
+    Manages PostgreSQL database for fraud detection system
     Implements Theme 1: Database Infrastructure
     """
 
-    def __init__(self, db_path='fraud_detection.db'):
-        """Initialize database connection"""
-        self.db_path = db_path
-        self.connection = None
-        # A single sqlite3.Cursor is shared across all callers, and Flask's
-        # dev server can handle requests on multiple threads concurrently.
-        # Concurrent cursor.execute() calls on the same cursor race on its
-        # internal C state and can crash the interpreter, so every query
-        # below is serialized through this lock.
-        self._lock = threading.Lock()
-        self._connect()
-    
-    def _connect(self):
-        """Create database connection"""
-        self.connection = sqlite3.connect(self.db_path, check_same_thread=False)
-        self.connection.row_factory = sqlite3.Row
-        self.cursor = self.connection.cursor()
-    
+    def __init__(self, minconn=1, maxconn=10):
+        """
+        Initialize a pooled PostgreSQL connection. Connection details come
+        from the environment (PGHOST/PGPORT/PGDATABASE/PGUSER/PGPASSWORD,
+        loaded from .env) rather than a single shared connection, so Flask's
+        request threads each get their own connection instead of racing on
+        one cursor.
+        """
+        self.pool = psycopg2.pool.ThreadedConnectionPool(
+            minconn, maxconn,
+            host=os.environ.get('PGHOST', 'localhost'),
+            port=os.environ.get('PGPORT', '5432'),
+            dbname=os.environ.get('PGDATABASE', 'fraud_detection'),
+            user=os.environ.get('PGUSER', 'fraud_app'),
+            password=os.environ.get('PGPASSWORD'),
+        )
+
     def create_tables(self):
         """Create all necessary database tables with optimized indexes"""
-        with self._lock:
+        conn = self.pool.getconn()
+        try:
+            cursor = conn.cursor()
+
             # Table 1: Customers (Customer profiles)
-            self.cursor.execute('''
+            cursor.execute('''
                 CREATE TABLE IF NOT EXISTS customers (
                     customer_id TEXT PRIMARY KEY,
                     name TEXT NOT NULL,
@@ -59,10 +65,10 @@ class DatabaseManager:
             ''')
 
             # Table 2: Transactions (All transactions)
-            self.cursor.execute('''
+            cursor.execute('''
                 CREATE TABLE IF NOT EXISTS transactions (
                     transaction_id TEXT PRIMARY KEY,
-                    customer_id TEXT NOT NULL,
+                    customer_id TEXT NOT NULL REFERENCES customers(customer_id),
                     amount REAL NOT NULL,
                     txn_time REAL,
                     timestamp TIMESTAMP,
@@ -71,38 +77,35 @@ class DatabaseManager:
                     fraud_score REAL,
                     is_fraud INTEGER,
                     decision TEXT,
-                    status TEXT,
-                    FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
+                    status TEXT
                 )
             ''')
 
             # Create indexes for query optimization (Theme 5: SQL Optimization)
-            self.cursor.execute('CREATE INDEX IF NOT EXISTS idx_customer_id ON transactions(customer_id)')
-            self.cursor.execute('CREATE INDEX IF NOT EXISTS idx_timestamp ON transactions(timestamp)')
-            self.cursor.execute('CREATE INDEX IF NOT EXISTS idx_fraud_score ON transactions(fraud_score)')
-            self.cursor.execute('CREATE INDEX IF NOT EXISTS idx_amount ON transactions(amount)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_customer_id ON transactions(customer_id)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_timestamp ON transactions(timestamp)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_fraud_score ON transactions(fraud_score)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_amount ON transactions(amount)')
 
             # Table 3: Fraud Alerts
-            self.cursor.execute('''
+            cursor.execute('''
                 CREATE TABLE IF NOT EXISTS fraud_alerts (
-                    alert_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    transaction_id TEXT NOT NULL,
-                    customer_id TEXT NOT NULL,
+                    alert_id SERIAL PRIMARY KEY,
+                    transaction_id TEXT NOT NULL REFERENCES transactions(transaction_id),
+                    customer_id TEXT NOT NULL REFERENCES customers(customer_id),
                     alert_type TEXT,
                     fraud_score REAL,
                     flags TEXT,
                     alert_time TIMESTAMP,
                     status TEXT,
-                    action_taken TEXT,
-                    FOREIGN KEY (transaction_id) REFERENCES transactions(transaction_id),
-                    FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
+                    action_taken TEXT
                 )
             ''')
 
             # Table 4: Fraud Detection Logs
-            self.cursor.execute('''
+            cursor.execute('''
                 CREATE TABLE IF NOT EXISTS detection_logs (
-                    log_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    log_id SERIAL PRIMARY KEY,
                     transaction_id TEXT NOT NULL,
                     detection_method TEXT,
                     score REAL,
@@ -112,9 +115,9 @@ class DatabaseManager:
             ''')
 
             # Table 5: System Metrics (For Theme 7: Business Impact)
-            self.cursor.execute('''
+            cursor.execute('''
                 CREATE TABLE IF NOT EXISTS system_metrics (
-                    metric_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    metric_id SERIAL PRIMARY KEY,
                     metric_name TEXT,
                     metric_value REAL,
                     timestamp TIMESTAMP,
@@ -122,14 +125,18 @@ class DatabaseManager:
                 )
             ''')
 
-            # Insert sample customers (Uganda banking context)
-            self._insert_sample_customers_locked()
+            conn.commit()
 
-            self.connection.commit()
+            # Insert sample customers (Uganda banking context) - own
+            # transaction, after the tables it depends on are committed
+            self._insert_sample_customers(conn)
+
             print("  ✓ Tables created with optimized indexes")
+        finally:
+            self.pool.putconn(conn)
 
-    def _insert_sample_customers_locked(self):
-        """Insert sample customer data. Caller must already hold self._lock."""
+    def _insert_sample_customers(self, conn):
+        """Insert sample customer data. Caller provides the connection."""
 
         # avg_transaction values are scaled to match the credit card fraud
         # dataset's amount range (mean ~87, 99th percentile ~1,025), not
@@ -148,217 +155,237 @@ class DatabaseManager:
             ('CUST010', 'Patricia Ochieng', 'Premium', 180, 'Kampala', 0.02, 'LOW_RISK'),
         ]
 
+        cursor = conn.cursor()
         for customer_id, name, account_type, avg_trans, location, unusual_freq, risk in sample_customers:
-            try:
-                self.cursor.execute('''
-                    INSERT OR IGNORE INTO customers
-                    (customer_id, name, account_type, created_date, avg_transaction,
-                     total_balance, last_location, last_transaction_time, unusual_hours_frequency, risk_level)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (customer_id, name, account_type, datetime.now(), avg_trans,
-                      avg_trans * 100, location, datetime.now(), unusual_freq, risk))
-            except sqlite3.Error:
-                pass
+            cursor.execute('''
+                INSERT INTO customers
+                (customer_id, name, account_type, created_date, avg_transaction,
+                 total_balance, last_location, last_transaction_time, unusual_hours_frequency, risk_level)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (customer_id) DO NOTHING
+            ''', (customer_id, name, account_type, datetime.now(), avg_trans,
+                  avg_trans * 100, location, datetime.now(), unusual_freq, risk))
 
-        self.connection.commit()
-    
+        conn.commit()
+
     def log_transaction(self, transaction_data):
         """Log a transaction to database (Theme 1: Database Storage)"""
-        with self._lock:
-            try:
-                self.cursor.execute('''
-                    INSERT INTO transactions
-                    (transaction_id, customer_id, amount, txn_time,
-                     timestamp, fraud_score, is_fraud, decision, status)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (
-                    transaction_data.get('transaction_id'),
-                    transaction_data.get('customer_id'),
-                    transaction_data.get('amount'),
-                    transaction_data.get('txn_time'),
-                    transaction_data.get('timestamp'),
-                    transaction_data.get('fraud_score'),
-                    1 if transaction_data.get('is_fraud') else 0,
-                    transaction_data.get('decision'),
-                    'PROCESSED'
-                ))
-                self.connection.commit()
-            except sqlite3.Error as e:
-                print(f"Database error: {e}")
+        conn = self.pool.getconn()
+        try:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO transactions
+                (transaction_id, customer_id, amount, txn_time,
+                 timestamp, fraud_score, is_fraud, decision, status)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ''', (
+                transaction_data.get('transaction_id'),
+                transaction_data.get('customer_id'),
+                transaction_data.get('amount'),
+                transaction_data.get('txn_time'),
+                transaction_data.get('timestamp'),
+                transaction_data.get('fraud_score'),
+                1 if transaction_data.get('is_fraud') else 0,
+                transaction_data.get('decision'),
+                'PROCESSED'
+            ))
+            conn.commit()
+        except psycopg2.Error as e:
+            conn.rollback()
+            print(f"Database error: {e}")
+        finally:
+            self.pool.putconn(conn)
 
     def log_fraud_alert(self, alert_data):
         """Log fraud alert (Theme 6: Handling Challenges)"""
-        with self._lock:
-            try:
-                flags_json = json.dumps(alert_data.get('sql_flags', {}))
+        conn = self.pool.getconn()
+        try:
+            cursor = conn.cursor()
+            flags_json = json.dumps(alert_data.get('sql_flags', {}))
 
-                self.cursor.execute('''
-                    INSERT INTO fraud_alerts
-                    (transaction_id, customer_id, alert_type, fraud_score, flags, alert_time, status)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                ''', (
-                    alert_data.get('transaction_id'),
-                    alert_data.get('customer_id'),
-                    'FRAUD_DETECTED',
-                    alert_data.get('fraud_score'),
-                    flags_json,
-                    datetime.now(),
-                    alert_data.get('decision')
-                ))
-                self.connection.commit()
-            except sqlite3.Error as e:
-                print(f"Database error: {e}")
-    
+            cursor.execute('''
+                INSERT INTO fraud_alerts
+                (transaction_id, customer_id, alert_type, fraud_score, flags, alert_time, status)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ''', (
+                alert_data.get('transaction_id'),
+                alert_data.get('customer_id'),
+                'FRAUD_DETECTED',
+                alert_data.get('fraud_score'),
+                flags_json,
+                datetime.now(),
+                alert_data.get('decision')
+            ))
+            conn.commit()
+        except psycopg2.Error as e:
+            conn.rollback()
+            print(f"Database error: {e}")
+        finally:
+            self.pool.putconn(conn)
+
     def get_customer_profile(self, customer_id):
         """
         Retrieve customer profile (Theme 4: Data Mining - Behavioral Analysis)
         Uses optimized SQL query with indexes
         """
-        with self._lock:
-            try:
-                self.cursor.execute('SELECT * FROM customers WHERE customer_id = ?', (customer_id,))
-                customer = self.cursor.fetchone()
+        conn = self.pool.getconn()
+        try:
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+            cursor.execute('SELECT * FROM customers WHERE customer_id = %s', (customer_id,))
+            customer = cursor.fetchone()
 
-                if customer:
-                    # Get recent transaction history
-                    self.cursor.execute('''
-                        SELECT decision FROM transactions
-                        WHERE customer_id = ?
-                        ORDER BY timestamp DESC
-                        LIMIT 20
-                    ''', (customer_id,))
+            if customer:
+                # Get recent transaction history
+                cursor.execute('''
+                    SELECT decision FROM transactions
+                    WHERE customer_id = %s
+                    ORDER BY timestamp DESC
+                    LIMIT 20
+                ''', (customer_id,))
 
-                    recent_decisions = [row[0] for row in self.cursor.fetchall() if row[0]]
+                recent_decisions = [row['decision'] for row in cursor.fetchall() if row['decision']]
 
-                    return {
-                        'customer_id': customer['customer_id'],
-                        'name': customer['name'],
-                        'account_type': customer['account_type'],
-                        'avg_transaction': customer['avg_transaction'],
-                        'last_location': customer['last_location'],
-                        'last_transaction_time': customer['last_transaction_time'],
-                        'unusual_hours_frequency': customer['unusual_hours_frequency'],
-                        'risk_level': customer['risk_level'],
-                        'recent_decisions': recent_decisions[:10]
-                    }
-                else:
-                    # Return default profile for unknown customer
-                    return {
-                        'customer_id': customer_id,
-                        'avg_transaction': 100000,
-                        'last_location': 'Kampala',
-                        'unusual_hours_frequency': 0.1,
-                        'recent_decisions': [],
-                        'last_transaction_time': datetime.now()
-                    }
-            except sqlite3.Error as e:
-                print(f"Error retrieving customer profile: {e}")
-                return {}
-    
+                return {
+                    'customer_id': customer['customer_id'],
+                    'name': customer['name'],
+                    'account_type': customer['account_type'],
+                    'avg_transaction': customer['avg_transaction'],
+                    'last_location': customer['last_location'],
+                    'last_transaction_time': customer['last_transaction_time'],
+                    'unusual_hours_frequency': customer['unusual_hours_frequency'],
+                    'risk_level': customer['risk_level'],
+                    'recent_decisions': recent_decisions[:10]
+                }
+            else:
+                # Return default profile for unknown customer
+                return {
+                    'customer_id': customer_id,
+                    'avg_transaction': 100000,
+                    'last_location': 'Kampala',
+                    'unusual_hours_frequency': 0.1,
+                    'recent_decisions': [],
+                    'last_transaction_time': datetime.now()
+                }
+        except psycopg2.Error as e:
+            conn.rollback()
+            print(f"Error retrieving customer profile: {e}")
+            return {}
+        finally:
+            self.pool.putconn(conn)
+
     def get_recent_transactions(self, customer_id, minutes=60):
         """
         Get recent transactions for velocity check (Theme 5: SQL Optimization)
         Uses indexed query for fast retrieval
         """
-        with self._lock:
-            try:
-                cutoff_time = datetime.now() - timedelta(minutes=minutes)
+        conn = self.pool.getconn()
+        try:
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+            cutoff_time = datetime.now() - timedelta(minutes=minutes)
 
-                self.cursor.execute('''
-                    SELECT * FROM transactions
-                    WHERE customer_id = ? AND timestamp > ?
-                    ORDER BY timestamp DESC
-                ''', (customer_id, cutoff_time.isoformat()))
+            cursor.execute('''
+                SELECT * FROM transactions
+                WHERE customer_id = %s AND timestamp > %s
+                ORDER BY timestamp DESC
+            ''', (customer_id, cutoff_time))
 
-                transactions = self.cursor.fetchall()
-                return [dict(row) for row in transactions]
-            except sqlite3.Error as e:
-                print(f"Error retrieving recent transactions: {e}")
-                return []
-    
+            return [dict(row) for row in cursor.fetchall()]
+        except psycopg2.Error as e:
+            conn.rollback()
+            print(f"Error retrieving recent transactions: {e}")
+            return []
+        finally:
+            self.pool.putconn(conn)
+
     def get_fraud_statistics(self):
         """Get fraud detection statistics (Theme 7: Business Impact)"""
-        with self._lock:
-            try:
-                # Total transactions
-                self.cursor.execute('SELECT COUNT(*) FROM transactions')
-                total = self.cursor.fetchone()[0]
+        conn = self.pool.getconn()
+        try:
+            cursor = conn.cursor()
 
-                # Fraudulent transactions
-                self.cursor.execute('SELECT COUNT(*) FROM transactions WHERE is_fraud = 1')
-                fraud_count = self.cursor.fetchone()[0]
+            # Total transactions
+            cursor.execute('SELECT COUNT(*) FROM transactions')
+            total = cursor.fetchone()[0]
 
-                # By decision
-                self.cursor.execute('SELECT decision, COUNT(*) FROM transactions GROUP BY decision')
-                decisions = self.cursor.fetchall()
+            # Fraudulent transactions
+            cursor.execute('SELECT COUNT(*) FROM transactions WHERE is_fraud = 1')
+            fraud_count = cursor.fetchone()[0]
 
-                # Total amount
-                self.cursor.execute('SELECT SUM(amount) FROM transactions')
-                total_amount = self.cursor.fetchone()[0] or 0
+            # By decision
+            cursor.execute('SELECT decision, COUNT(*) FROM transactions GROUP BY decision')
+            decisions = cursor.fetchall()
 
-                # Fraud amount
-                self.cursor.execute('SELECT SUM(amount) FROM transactions WHERE is_fraud = 1')
-                fraud_amount = self.cursor.fetchone()[0] or 0
+            # Total amount
+            cursor.execute('SELECT SUM(amount) FROM transactions')
+            total_amount = cursor.fetchone()[0] or 0
 
-                return {
-                    'total_transactions': total,
-                    'fraud_count': fraud_count,
-                    'fraud_rate': fraud_count / total if total > 0 else 0,
-                    'total_amount': total_amount,
-                    'fraud_amount': fraud_amount,
-                    'decisions': dict(decisions) if decisions else {}
-                }
-            except sqlite3.Error as e:
-                print(f"Error getting statistics: {e}")
-                return {}
-    
+            # Fraud amount
+            cursor.execute('SELECT SUM(amount) FROM transactions WHERE is_fraud = 1')
+            fraud_amount = cursor.fetchone()[0] or 0
+
+            return {
+                'total_transactions': total,
+                'fraud_count': fraud_count,
+                'fraud_rate': fraud_count / total if total > 0 else 0,
+                'total_amount': total_amount,
+                'fraud_amount': fraud_amount,
+                'decisions': dict(decisions) if decisions else {}
+            }
+        except psycopg2.Error as e:
+            conn.rollback()
+            print(f"Error getting statistics: {e}")
+            return {}
+        finally:
+            self.pool.putconn(conn)
+
     def get_all_transactions(self):
         """Retrieve all transactions from database"""
-        with self._lock:
-            try:
-                self.cursor.execute('SELECT * FROM transactions')
-                columns = [description[0] for description in self.cursor.description]
-
-                transactions = []
-                for row in self.cursor.fetchall():
-                    transactions.append(dict(zip(columns, row)))
-
-                return transactions
-            except sqlite3.Error as e:
-                print(f"Error retrieving transactions: {e}")
-                return []
+        conn = self.pool.getconn()
+        try:
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+            cursor.execute('SELECT * FROM transactions')
+            return [dict(row) for row in cursor.fetchall()]
+        except psycopg2.Error as e:
+            conn.rollback()
+            print(f"Error retrieving transactions: {e}")
+            return []
+        finally:
+            self.pool.putconn(conn)
 
     def get_latest_transactions(self, limit=50, decision=None):
         """
         Retrieve the most recent transactions, newest first (for dashboard display).
         Pass decision ('BLOCK', 'REVIEW', 'MONITOR', or 'ALLOW') to filter to just that outcome.
         """
-        with self._lock:
-            try:
-                if decision:
-                    self.cursor.execute('''
-                        SELECT * FROM transactions
-                        WHERE decision = ?
-                        ORDER BY timestamp DESC
-                        LIMIT ?
-                    ''', (decision, limit))
-                else:
-                    self.cursor.execute('''
-                        SELECT * FROM transactions
-                        ORDER BY timestamp DESC
-                        LIMIT ?
-                    ''', (limit,))
-                columns = [description[0] for description in self.cursor.description]
-                return [dict(zip(columns, row)) for row in self.cursor.fetchall()]
-            except sqlite3.Error as e:
-                print(f"Error retrieving latest transactions: {e}")
-                return []
+        conn = self.pool.getconn()
+        try:
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+            if decision:
+                cursor.execute('''
+                    SELECT * FROM transactions
+                    WHERE decision = %s
+                    ORDER BY timestamp DESC
+                    LIMIT %s
+                ''', (decision, limit))
+            else:
+                cursor.execute('''
+                    SELECT * FROM transactions
+                    ORDER BY timestamp DESC
+                    LIMIT %s
+                ''', (limit,))
+            return [dict(row) for row in cursor.fetchall()]
+        except psycopg2.Error as e:
+            conn.rollback()
+            print(f"Error retrieving latest transactions: {e}")
+            return []
+        finally:
+            self.pool.putconn(conn)
 
     def close(self):
-        """Close database connection"""
-        if self.connection:
-            self.connection.close()
-    
+        """Close all pooled database connections. Safe to call more than once."""
+        if getattr(self, 'pool', None) and not self.pool.closed:
+            self.pool.closeall()
+
     def __del__(self):
         """Cleanup on deletion"""
         self.close()

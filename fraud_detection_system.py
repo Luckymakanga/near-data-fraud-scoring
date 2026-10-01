@@ -31,25 +31,23 @@ class FraudDetectionSystem:
     Combines database technology with machine learning for real-time fraud detection
     """
     
-    def __init__(self, db_path='fraud_detection.db', model_path='fraud_model.pkl'):
+    def __init__(self, model_path='fraud_model.pkl'):
         """
         Initialize the fraud detection system
-        
+
         Args:
-            db_path: Path to SQLite database
             model_path: Path to save/load ML model
         """
         print("=" * 80)
         print("UGANDA BANKING SECTOR - FRAUD DETECTION SYSTEM")
         print("Powered by Machine Learning & Database Technology")
         print("=" * 80)
-        
-        self.db_path = db_path
+
         self.model_path = model_path
-        
+
         # Initialize core modules
         print("\n[1/4] Initializing Database Manager...")
-        self.db_manager = DatabaseManager(db_path)
+        self.db_manager = DatabaseManager()
         
         print("[2/4] Initializing Machine Learning Model...")
         self.ml_model = AdvancedFraudDetectionModel(model_path)

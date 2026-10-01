@@ -27,7 +27,7 @@ PyJWT>=2.3.0
 
 # Database
 SQLAlchemy>=1.4.0
-# sqlite3 is part of the Python standard library - no pip install needed
+psycopg2-binary>=2.9.0
 
 # Real-Time Streaming & Processing
 confluent-kafka>=1.7.0
