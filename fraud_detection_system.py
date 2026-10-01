@@ -118,8 +118,9 @@ class FraudDetectionSystem:
         )
         
         # Get ML fraud prediction (Theme 3: Machine Learning)
-        fraud_probability = self.ml_model.predict_fraud_advanced(features)
-        is_fraud = fraud_probability > 0.5
+        # Cast to native Python types - numpy.float64/numpy.bool_ aren't JSON serializable
+        fraud_probability = float(self.ml_model.predict_fraud_advanced(features))
+        is_fraud = bool(fraud_probability > 0.5)
         
         # Combine SQL flags and ML prediction (Theme 6: Handling Challenges)
         final_decision = self._combine_detections(sql_flags, is_fraud, fraud_probability)
