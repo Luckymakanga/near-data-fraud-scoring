@@ -182,12 +182,17 @@ class FraudDetectionAPI:
         @self.limiter.limit("200 per hour")
         @self._token_required
         def get_recent_transactions():
-            """Get the most recent transactions, newest first"""
+            """Get the most recent transactions, newest first. Optional ?decision=BLOCK|REVIEW|MONITOR|ALLOW filters to that outcome."""
             try:
                 limit = request.args.get('limit', default=50, type=int)
                 limit = max(1, min(limit, 200))
 
-                transactions = self.system.db_manager.get_latest_transactions(limit)
+                decision = request.args.get('decision', default=None, type=str)
+                valid_decisions = {'BLOCK', 'REVIEW', 'MONITOR', 'ALLOW'}
+                if decision and decision not in valid_decisions:
+                    return jsonify({'error': f"Invalid decision filter. Must be one of {sorted(valid_decisions)}"}), 400
+
+                transactions = self.system.db_manager.get_latest_transactions(limit, decision=decision)
 
                 return jsonify({
                     'status': 'success',

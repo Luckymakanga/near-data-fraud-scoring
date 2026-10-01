@@ -406,10 +406,62 @@ code {
   font-size: 12px;
 }
 
+/* ---------- Transaction filters ---------- */
+
+.filter-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.pill {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.pill:hover { opacity: 0.8; }
+
+.pill.active {
+  border-color: transparent;
+  color: var(--text);
+  background: var(--track);
+}
+
+.pill.decision-BLOCK.active { background: var(--red-soft); color: var(--red); }
+.pill.decision-REVIEW.active { background: var(--yellow-soft); color: var(--yellow); }
+.pill.decision-MONITOR.active { background: var(--blue-soft); color: var(--blue); }
+.pill.decision-ALLOW.active { background: var(--green-soft); color: var(--green); }
+
 /* ---------- Transactions table ---------- */
 
 .table-wrap {
   overflow-x: auto;
+}
+
+.customer-link {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--track);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.customer-link:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .tx-table {

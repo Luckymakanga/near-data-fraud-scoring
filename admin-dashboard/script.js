@@ -32,6 +32,7 @@ const el = {
   analyzeResult: document.getElementById("analyzeResult"),
 
   autoRefresh: document.getElementById("autoRefresh"),
+  filterPills: document.getElementById("filterPills"),
   txTableBody: document.getElementById("txTableBody"),
   patternList: document.getElementById("patternList"),
 
@@ -206,11 +207,17 @@ function fmtScore(n) {
   return `${(n * 100).toFixed(1)}%`;
 }
 
+let decisionFilter = "";
+
 async function loadTransactions() {
-  const { transactions } = await apiFetch("/api/transactions/recent?limit=25");
+  const query = decisionFilter ? `&decision=${decisionFilter}` : "";
+  const { transactions } = await apiFetch(`/api/transactions/recent?limit=25${query}`);
 
   if (!transactions.length) {
-    el.txTableBody.innerHTML = `<tr><td colspan="7" class="table-empty">No transactions yet — analyze one above, or run the full system to generate sample data.</td></tr>`;
+    const emptyMsg = decisionFilter
+      ? `No ${decisionFilter} transactions yet.`
+      : "No transactions yet — analyze one above, or run the full system to generate sample data.";
+    el.txTableBody.innerHTML = `<tr><td colspan="7" class="table-empty">${emptyMsg}</td></tr>`;
     return;
   }
 
@@ -238,6 +245,17 @@ el.txTableBody.addEventListener("click", (e) => {
   el.lCustomer.value = link.dataset.customer;
   lookupCustomer(link.dataset.customer);
   el.profileCard.scrollIntoView({ behavior: "smooth", block: "center" });
+});
+
+el.filterPills.addEventListener("click", (e) => {
+  const pill = e.target.closest(".pill");
+  if (!pill) return;
+
+  decisionFilter = pill.dataset.decision;
+  el.filterPills.querySelectorAll(".pill").forEach((p) => p.classList.toggle("active", p === pill));
+  loadTransactions().catch((err) => {
+    if (err.message !== "Unauthorized") showToast(err.message);
+  });
 });
 
 // ---------- Fraud patterns ----------

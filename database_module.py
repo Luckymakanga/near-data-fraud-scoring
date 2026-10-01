@@ -326,15 +326,26 @@ class DatabaseManager:
                 print(f"Error retrieving transactions: {e}")
                 return []
 
-    def get_latest_transactions(self, limit=50):
-        """Retrieve the most recent transactions, newest first (for dashboard display)"""
+    def get_latest_transactions(self, limit=50, decision=None):
+        """
+        Retrieve the most recent transactions, newest first (for dashboard display).
+        Pass decision ('BLOCK', 'REVIEW', 'MONITOR', or 'ALLOW') to filter to just that outcome.
+        """
         with self._lock:
             try:
-                self.cursor.execute('''
-                    SELECT * FROM transactions
-                    ORDER BY timestamp DESC
-                    LIMIT ?
-                ''', (limit,))
+                if decision:
+                    self.cursor.execute('''
+                        SELECT * FROM transactions
+                        WHERE decision = ?
+                        ORDER BY timestamp DESC
+                        LIMIT ?
+                    ''', (decision, limit))
+                else:
+                    self.cursor.execute('''
+                        SELECT * FROM transactions
+                        ORDER BY timestamp DESC
+                        LIMIT ?
+                    ''', (limit,))
                 columns = [description[0] for description in self.cursor.description]
                 return [dict(zip(columns, row)) for row in self.cursor.fetchall()]
             except sqlite3.Error as e:
