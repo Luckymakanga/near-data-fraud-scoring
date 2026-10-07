@@ -69,15 +69,15 @@ class AdvancedFraudDetectionModel:
         print("\n" + "="*80)
         print("TRAINING ADVANCED ENSEMBLE FRAUD DETECTION MODEL")
         print("="*80)
-        
+
         # Load training data
         X, y = self.load_training_data()
-        
+
         print(f"\n[Data Preparation]")
         print(f"  Total samples: {len(X)}")
         print(f"  Features: {len(self.feature_names)}")
         print(f"  Fraud ratio: {y.sum()/len(y):.2%}")
-        
+
         # Train/test split - BEFORE any resampling or scaling, so no
         # information about the test set (real or ADASYN-synthesized
         # from test neighbors) ever reaches training.
@@ -85,6 +85,30 @@ class AdvancedFraudDetectionModel:
             X, y, test_size=0.2, random_state=42, stratify=y
         )
 
+        self.fit(X_train_raw, y_train)
+
+        # Quick held-out sanity check only - evaluate.py reports the proper
+        # fraud-detection metrics (precision, recall, F1, PR-AUC, FPR) on a
+        # time-ordered split.
+        X_test = self.scaler.transform(X_test_raw)
+        print(f"\n[Held-out Check]")
+        for name in ('xgboost', 'lightgbm', 'voting_ensemble'):
+            model = self.models[name]
+            accuracy = model.score(X_test, y_test)
+            auc = roc_auc_score(y_test, model.predict_proba(X_test)[:, 1])
+            print(f"  {name}: Accuracy: {accuracy:.2%} | AUC: {auc:.2%}")
+
+        print(f"\n{'='*80}")
+        print(f"✓ Model training completed successfully!")
+        print(f"{'='*80}")
+
+    def fit(self, X_train_raw, y_train):
+        """
+        Fit every model on the given (raw, unscaled) training split.
+
+        Kept separate from train_ensemble_model() so evaluate.py can train
+        on its own split with exactly the pipeline production uses.
+        """
         # Handle class imbalance with ADASYN (more advanced than SMOTE) -
         # fit only on the training split
         print(f"\n[Class Balancing]")
@@ -98,14 +122,12 @@ class AdvancedFraudDetectionModel:
         except:
             X_train_balanced = X_train_raw
 
-        # Feature scaling - fit on the (balanced) training data only,
-        # then apply that same transform to the untouched test data
+        # Feature scaling - fit on the (balanced) training data only
         X_train = self.scaler.fit_transform(X_train_balanced)
-        X_test = self.scaler.transform(X_test_raw)
 
         print(f"\n[Model Training]")
-        print(f"  Training set: {len(X_train)} | Test set: {len(X_test)}")
-        
+        print(f"  Training set: {len(X_train)}")
+
         # Model 1: XGBoost with hyperparameter tuning
         print(f"\n  1. XGBoost...")
         xgb_model = xgb.XGBClassifier(
@@ -120,11 +142,8 @@ class AdvancedFraudDetectionModel:
             tree_method='gpu_hist' if self._check_gpu() else 'auto'
         )
         xgb_model.fit(X_train, y_train)
-        xgb_score = xgb_model.score(X_test, y_test)
-        xgb_auc = roc_auc_score(y_test, xgb_model.predict_proba(X_test)[:, 1])
-        print(f"     Accuracy: {xgb_score:.2%} | AUC: {xgb_auc:.2%}")
         self.models['xgboost'] = xgb_model
-        
+
         # Model 2: LightGBM (faster, more efficient)
         print(f"\n  2. LightGBM...")
         lgb_model = lgb.LGBMClassifier(
@@ -137,11 +156,8 @@ class AdvancedFraudDetectionModel:
             random_state=42
         )
         lgb_model.fit(X_train, y_train)
-        lgb_score = lgb_model.score(X_test, y_test)
-        lgb_auc = roc_auc_score(y_test, lgb_model.predict_proba(X_test)[:, 1])
-        print(f"     Accuracy: {lgb_score:.2%} | AUC: {lgb_auc:.2%}")
         self.models['lightgbm'] = lgb_model
-        
+
         # Model 3: Isolation Forest (Anomaly Detection - Theme 4)
         print(f"\n  3. Isolation Forest (Anomaly Detection)...")
         iso_forest = IsolationForest(
@@ -151,49 +167,73 @@ class AdvancedFraudDetectionModel:
             n_jobs=-1
         )
         iso_forest.fit(X_train)
-        iso_predictions = iso_forest.predict(X_test)
-        iso_score = (iso_predictions == y_test).mean()
-        print(f"     Accuracy: {iso_score:.2%}")
         self.models['isolation_forest'] = iso_forest
-        
+
         # Model 4: One-Class SVM (Anomaly Detection)
         print(f"\n  4. One-Class SVM...")
         try:
             oc_svm = OneClassSVM(kernel='rbf', gamma='auto', nu=0.05)
             oc_svm.fit(X_train)
-            oc_predictions = oc_svm.predict(X_test)
-            oc_score = (oc_predictions == y_test).mean()
-            print(f"     Accuracy: {oc_score:.2%}")
             self.models['one_class_svm'] = oc_svm
         except:
             print(f"     Skipped (computational constraints)")
-        
+
         # Create voting ensemble
         print(f"\n  5. Voting Ensemble...")
         voting_estimators = [
             ('xgb', xgb_model),
             ('lgb', lgb_model)
         ]
-        
+
         voting_model = VotingClassifier(
             estimators=voting_estimators,
             voting='soft'
         )
         voting_model.fit(X_train, y_train)
-        voting_score = voting_model.score(X_test, y_test)
-        voting_auc = roc_auc_score(y_test, voting_model.predict_proba(X_test)[:, 1])
-        print(f"     Accuracy: {voting_score:.2%} | AUC: {voting_auc:.2%}")
         self.models['voting_ensemble'] = voting_model
-        
+
         # Feature importance
         self._extract_feature_importance(xgb_model, lgb_model)
-        
+
         self.is_trained = True
-        
-        print(f"\n{'='*80}")
-        print(f"✓ Model training completed successfully!")
-        print(f"{'='*80}")
-    
+
+    def score_batch(self, features):
+        """
+        Ensemble fraud score for each row of a 2-D array of raw (unscaled)
+        feature vectors: the weighted average of the individual models.
+        """
+        features_scaled = self.scaler.transform(features)
+
+        predictions = {}
+
+        # XGBoost prediction
+        if 'xgboost' in self.models:
+            predictions['xgb'] = self.models['xgboost'].predict_proba(features_scaled)[:, 1]
+
+        # LightGBM prediction
+        if 'lightgbm' in self.models:
+            predictions['lgb'] = self.models['lightgbm'].predict_proba(features_scaled)[:, 1]
+
+        # Isolation Forest prediction (anomaly score)
+        if 'isolation_forest' in self.models:
+            iso_score = self.models['isolation_forest'].score_samples(features_scaled)
+            predictions['iso'] = 1 / (1 + np.exp(iso_score))  # Sigmoid conversion
+
+        # Voting ensemble
+        if 'voting_ensemble' in self.models:
+            predictions['voting'] = self.models['voting_ensemble'].predict_proba(features_scaled)[:, 1]
+
+        # Weighted average
+        weights = {'xgb': 0.35, 'lgb': 0.35, 'iso': 0.15, 'voting': 0.15}
+
+        final_score = sum(predictions[k] * weights[k] for k in predictions)
+
+        # Normalize
+        total_weight = sum(weights[k] for k in predictions)
+        final_score = final_score / max(total_weight, 1)
+
+        return np.clip(final_score, 0, 1)  # Ensure between 0 and 1
+
     def predict_fraud_advanced(self, features):
         """
         Advanced prediction using multiple models
@@ -201,51 +241,20 @@ class AdvancedFraudDetectionModel:
         """
         if not self.is_trained or not self.models:
             return 0.5
-        
+
         try:
             if isinstance(features, list):
                 features = np.array(features)
-            
+
             if features.ndim == 1:
                 features = features.reshape(1, -1)
-            
-            features_scaled = self.scaler.transform(features)
-            
-            predictions = {}
-            
-            # XGBoost prediction
-            if 'xgboost' in self.models:
-                predictions['xgb'] = self.models['xgboost'].predict_proba(features_scaled)[0, 1]
-            
-            # LightGBM prediction
-            if 'lightgbm' in self.models:
-                predictions['lgb'] = self.models['lightgbm'].predict_proba(features_scaled)[0, 1]
-            
-            # Isolation Forest prediction (anomaly score)
-            if 'isolation_forest' in self.models:
-                iso_score = self.models['isolation_forest'].score_samples(features_scaled)[0]
-                predictions['iso'] = 1 / (1 + np.exp(iso_score))  # Sigmoid conversion
-            
-            # Voting ensemble
-            if 'voting_ensemble' in self.models:
-                predictions['voting'] = self.models['voting_ensemble'].predict_proba(features_scaled)[0, 1]
-            
-            # Weighted average
-            weights = {'xgb': 0.35, 'lgb': 0.35, 'iso': 0.15, 'voting': 0.15}
-            
-            final_score = sum(predictions.get(k, 0) * weights.get(k, 0) 
-                             for k in predictions.keys())
-            
-            # Normalize
-            total_weight = sum(weights.get(k, 0) for k in predictions.keys())
-            final_score = final_score / max(total_weight, 1)
-            
-            return min(max(final_score, 0), 1)  # Ensure between 0 and 1
-        
+
+            return self.score_batch(features)[0]
+
         except Exception as e:
             print(f"Error in advanced prediction: {e}")
             return 0.5
-    
+
     def _extract_feature_importance(self, xgb_model, lgb_model):
         """Extract feature importance from models"""
         xgb_importance = xgb_model.feature_importances_
@@ -273,31 +282,3 @@ class AdvancedFraudDetectionModel:
             return True
         except:
             return False
-    
-    def get_model_performance_metrics(self, X_test, y_test):
-        """Get comprehensive performance metrics"""
-        metrics = {}
-        
-        for model_name, model in self.models.items():
-            try:
-                if hasattr(model, 'predict_proba'):
-                    y_pred_proba = model.predict_proba(X_test)[:, 1]
-                else:
-                    y_pred_proba = model.score_samples(X_test)
-                
-                y_pred = (y_pred_proba > 0.5).astype(int)
-                
-                auc = roc_auc_score(y_test, y_pred_proba)
-                precision, recall, _ = precision_recall_curve(y_test, y_pred_proba)
-                f1 = f1_score(y_test, y_pred)
-                
-                metrics[model_name] = {
-                    'auc': auc,
-                    'f1': f1,
-                    'precision': precision[-1],
-                    'recall': recall[-1]
-                }
-            except:
-                pass
-        
-        return metrics
