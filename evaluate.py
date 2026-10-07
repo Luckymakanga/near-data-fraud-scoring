@@ -51,28 +51,38 @@ ULB_FULL_NON_FRAUD = 284_315
 METRIC_NAMES = ['precision', 'recall', 'f1', 'pr_auc', 'fpr', 'roc_auc']
 
 
-def load_split(data_path, split, test_size=0.2):
-    """Load the dataset and split it into train/test feature arrays"""
-    df = pd.read_csv(data_path)
-
+def split_frame(df, split, test_size=0.2):
+    """Split the dataset into train/test frames, by time or at random"""
     if split == 'time':
         df = df.sort_values('Time', kind='stable').reset_index(drop=True)
         cut = int(len(df) * (1 - test_size))
-        train_df, test_df = df.iloc[:cut], df.iloc[cut:]
-    else:
-        train_df, test_df = train_test_split(
-            df, test_size=test_size, random_state=42, stratify=df['Class']
-        )
+        return df.iloc[:cut], df.iloc[cut:]
 
-    def to_arrays(part):
-        X = np.array([extract_creditcard_features(row) for row in part.to_dict('records')])
-        return X, part['Class'].to_numpy()
+    return train_test_split(
+        df, test_size=test_size, random_state=42, stratify=df['Class']
+    )
 
-    # Weight that scales the sampled non-fraud rows back up to their real
-    # share (1.0 if the file is the full dataset rather than the sample)
-    negative_weight = ULB_FULL_NON_FRAUD / (df['Class'] == 0).sum()
 
-    return to_arrays(train_df), to_arrays(test_df), negative_weight
+def to_arrays(part):
+    """Feature matrix and labels for a frame of raw transactions"""
+    X = np.array([extract_creditcard_features(row) for row in part.to_dict('records')])
+    return X, part['Class'].to_numpy()
+
+
+def negative_weight(df):
+    """
+    Weight that scales the sampled non-fraud rows back up to their real
+    share (1.0 if the file is the full dataset rather than the sample)
+    """
+    return ULB_FULL_NON_FRAUD / (df['Class'] == 0).sum()
+
+
+def load_split(data_path, split, test_size=0.2):
+    """Load the dataset and split it into train/test feature arrays"""
+    df = pd.read_csv(data_path)
+    train_df, test_df = split_frame(df, split, test_size)
+
+    return to_arrays(train_df), to_arrays(test_df), negative_weight(df)
 
 
 def compute_metrics(y_true, scores, threshold, weights=None):

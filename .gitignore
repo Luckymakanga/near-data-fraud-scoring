@@ -4,3 +4,4 @@ __pycache__/
 *.pkl
 uganda_fraud_detection_results.json
 .env
+.benchdb/
