@@ -119,8 +119,16 @@ def process_usage(pid):
     return cpu.user + cpu.system, getattr(memory, 'peak_wset', memory.rss) / 2**20
 
 
-def load_generator(mode, dsn, rows, rate, model_path, out_queue):
-    """Insert the transactions at a fixed arrival rate, one commit each"""
+def load_generator(mode, dsn, rows, rate, model_path, out_queue,
+                   index=0, count=1, go=None, start_time=None):
+    """Insert the transactions at a fixed arrival rate, one commit each
+
+    With several connections, generator `index` of `count` handles every
+    count-th transaction. All generators share one schedule (transaction i
+    is due at start + i / rate) and wait on `go` so none starts before the
+    others have finished their cold start.
+    """
+    ids = list(range(index, len(rows), count))
     conn = psycopg2.connect(dsn)
     cur = conn.cursor()
     db_pid = conn.get_backend_pid()
@@ -150,9 +158,13 @@ def load_generator(mode, dsn, rows, rate, model_path, out_queue):
     app_cpu_before, _ = process_usage(os.getpid())
     db_cpu_before, _ = process_usage(db_pid)
 
+    out_queue.put('ready')
+    go.wait()
+    start = start_time.value
+
     scheduled, committed = [], []
-    start = time.time() + 0.5
-    for i, row in enumerate(rows):
+    for i in ids:
+        row = rows[i]
         due = start + i / rate
         delay = due - time.time()
         if delay > 0:
@@ -170,6 +182,7 @@ def load_generator(mode, dsn, rows, rate, model_path, out_queue):
     app_cpu, app_memory = process_usage(os.getpid())
     db_cpu, db_memory = process_usage(db_pid)
     out_queue.put({
+        'ids': ids,
         'scheduled': scheduled,
         'committed': committed,
         'cold_start': cold_start,
@@ -197,10 +210,13 @@ def batch_scorer(dsn, model_path, interval, expected, out_queue):
 
     scored_at = {}
     batches = 0
+    max_batch_rows = 0
+    max_batch_seconds = 0.0
     next_poll = time.time() + interval
     while len(scored_at) < expected:
         time.sleep(max(0.0, next_poll - time.time()))
         next_poll += interval
+        poll_started = time.perf_counter()
 
         cur.execute(
             sql.SQL('SELECT transaction_id, {} FROM bench_transactions '
@@ -224,12 +240,16 @@ def batch_scorer(dsn, model_path, interval, expected, out_queue):
         now = time.time()
         for row in rows:
             scored_at[row['transaction_id']] = now
+        max_batch_rows = max(max_batch_rows, len(rows))
+        max_batch_seconds = max(max_batch_seconds, time.perf_counter() - poll_started)
 
     app_cpu, app_memory = process_usage(os.getpid())
     db_cpu, db_memory = process_usage(db_pid)
     out_queue.put({
         'scored_at': scored_at,
         'batches': batches,
+        'max_batch_rows': max_batch_rows,
+        'max_batch_seconds': max_batch_seconds,
         'cold_start': cold_start,
         'app_cpu': app_cpu - app_cpu_before,
         'app_memory': app_memory,
@@ -239,14 +259,27 @@ def batch_scorer(dsn, model_path, interval, expected, out_queue):
     conn.close()
 
 
-def wait_for(queue, process):
-    """Next message from a worker process, failing fast if it died instead"""
+def wait_for(queue, processes):
+    """Next message from worker process(es), failing fast if one died instead
+
+    A worker that has already reported may exit cleanly while others are
+    still running, so only a non-zero exit, or every worker having
+    exited with nothing left to read, counts as a failure.
+    """
+    if not isinstance(processes, (list, tuple)):
+        processes = [processes]
     while True:
         try:
             return queue.get(timeout=1)
         except multiprocessing.queues.Empty:
-            if not process.is_alive():
-                raise RuntimeError(f"{process.name} exited without reporting (see output above)")
+            crashed = [p for p in processes if p.exitcode not in (None, 0)]
+            finished = all(not p.is_alive() for p in processes)
+            if crashed or finished:
+                try:
+                    return queue.get(timeout=1)
+                except multiprocessing.queues.Empty:
+                    names = ', '.join(p.name for p in (crashed or processes))
+                    raise RuntimeError(f"{names} exited without reporting (see output above)")
 
 
 def latency_summary(seconds):
@@ -267,8 +300,14 @@ def median_of_runs(measurements):
     return float(np.median(measurements))
 
 
-def run_mode(mode, dsn, rows, rate, batch_interval, model_path):
-    """Run one architecture and return its measurements and stored scores"""
+def run_mode(mode, dsn, rows, rate, batch_interval, model_path, connections=1):
+    """Run one architecture and return its measurements and stored scores
+
+    `connections` is the number of concurrent database connections (and, for
+    the application architecture, application scorer processes) the arrivals
+    are spread across. Memory is summed over them, since each holds its own
+    copy of the model.
+    """
     conn = psycopg2.connect(dsn)
     conn.autocommit = True
     cur = conn.cursor()
@@ -287,19 +326,37 @@ def run_mode(mode, dsn, rows, rate, batch_interval, model_path):
         wait_for(scorer_queue, scorer)  # 'ready'
 
     loader_queue = multiprocessing.Queue()
-    loader = multiprocessing.Process(
-        target=load_generator, name='load generator',
-        args=(mode, dsn, rows, rate, model_path, loader_queue))
-    loader.start()
-    load = wait_for(loader_queue, loader)
-    loader.join()
+    go = multiprocessing.Event()
+    start_time = multiprocessing.Value('d', 0.0)
+    loaders = [
+        multiprocessing.Process(
+            target=load_generator, name=f'load generator {k + 1}',
+            args=(mode, dsn, rows, rate, model_path, loader_queue, k, connections, go, start_time))
+        for k in range(connections)
+    ]
+    for loader in loaders:
+        loader.start()
+    for _ in loaders:
+        wait_for(loader_queue, loaders)  # each reports 'ready' after its cold start
+    start_time.value = time.time() + 0.5
+    go.set()
+    loads = [wait_for(loader_queue, loaders) for _ in loaders]
+    for loader in loaders:
+        loader.join()
 
-    scheduled = np.array(load['scheduled'])
-    ingest = np.array(load['committed']) - scheduled
+    scheduled = np.empty(len(rows))
+    committed = np.empty(len(rows))
+    for load in loads:
+        scheduled[load['ids']] = load['scheduled']
+        committed[load['ids']] = load['committed']
+    ingest = committed - scheduled
     decision = ingest
-    cold_start = load['cold_start']
-    app_cpu, db_cpu = load['app_cpu'], load['db_cpu']
-    app_memory, db_memory = load['app_memory'], load['db_memory']
+    cold_start = max(load['cold_start'] for load in loads)
+    app_cpu = sum(load['app_cpu'] for load in loads)
+    db_cpu = sum(load['db_cpu'] for load in loads)
+    app_memory = sum(load['app_memory'] for load in loads)
+    db_memory = sum(load['db_memory'] for load in loads)
+    extra = {}
 
     if scorer:
         scoring = wait_for(scorer_queue, scorer)
@@ -308,15 +365,25 @@ def run_mode(mode, dsn, rows, rate, batch_interval, model_path):
         cold_start = scoring['cold_start']
         app_cpu += scoring['app_cpu']
         db_cpu += scoring['db_cpu']
+        # max, as in the original benchmark: the larger of the inserting and
+        # the scoring side, so results stay comparable with earlier runs
         app_memory = max(app_memory, scoring['app_memory'])
         db_memory = max(db_memory, scoring['db_memory'])
+        extra = {'max_batch_rows': scoring['max_batch_rows'],
+                 'max_batch_seconds': scoring['max_batch_seconds']}
 
     cur.execute('SELECT fraud_score FROM bench_transactions ORDER BY transaction_id')
     scores = np.array([row[0] for row in cur.fetchall()], dtype=float)
     conn.close()
 
     per_1000 = 1000 / len(rows)
+    duration = float(committed.max() - scheduled.min())
     return scores, {
+        'connections': connections,
+        'duration_s': duration,
+        'achieved_rate_per_s': len(rows) / duration,
+        'final_backlog_ms': float(ingest[np.argmax(committed)] * 1000),
+        **extra,
         'ingest_latency_ms': latency_summary(ingest),
         'decision_latency_ms': latency_summary(decision),
         'cold_start_s': cold_start,
@@ -329,11 +396,44 @@ def run_mode(mode, dsn, rows, rate, batch_interval, model_path):
     }
 
 
+def prepare_workload(data_path, model_path, limit=None):
+    """Fit the model on the earlier 80% by time, pickle it, and build the replay
+
+    Returns the replayed transactions, their labels, the model's own scores
+    for them (the reference every architecture must reproduce), and the
+    evaluation weights that restore the real fraud prevalence.
+    """
+    import pandas as pd
+    from advanced_ml_models import AdvancedFraudDetectionModel
+    from evaluate import negative_weight, split_frame, to_arrays
+
+    df = pd.read_csv(data_path)
+    train_df, test_df = split_frame(df, 'time')
+    if limit:
+        test_df = test_df.iloc[:limit]
+
+    model = AdvancedFraudDetectionModel(data_path=data_path)
+    model.fit(*to_arrays(train_df))
+    with open(model_path, 'wb') as f:
+        pickle.dump(model, f)
+
+    X_test, y_test = to_arrays(test_df)
+    reference_scores = model.score_batch(X_test)
+    weights = np.where(y_test == 1, 1.0, negative_weight(df))
+
+    rows = test_df.rename(columns=str.lower)[TRANSACTION_COLUMNS].to_dict('records')
+    for i, row in enumerate(rows):
+        row['transaction_id'] = i
+    return rows, y_test, reference_scores, weights
+
+
 def main():
     parser = argparse.ArgumentParser(description='Compare fraud-scoring architectures')
     parser.add_argument('--data', default='data/creditcard_sample.csv')
     parser.add_argument('--rate', type=float, default=10,
                         help='transaction arrival rate (per second)')
+    parser.add_argument('--connections', type=int, default=1,
+                        help='concurrent connections the arrivals are spread across')
     parser.add_argument('--batch-interval', type=float, default=10,
                         help='seconds between polls of the external batch scorer')
     parser.add_argument('--runs', type=int, default=3,
@@ -349,32 +449,16 @@ def main():
     if not dsn:
         sys.exit("BENCH_DATABASE_URL is not set - run `python benchmark_db.py init` first")
 
-    import pandas as pd
-    from advanced_ml_models import AdvancedFraudDetectionModel
-    from evaluate import compute_metrics, negative_weight, split_frame, to_arrays
+    from evaluate import compute_metrics
 
-    df = pd.read_csv(args.data)
-    train_df, test_df = split_frame(df, 'time')
-    if args.limit:
-        test_df = test_df.iloc[:args.limit]
-
-    model = AdvancedFraudDetectionModel(data_path=args.data)
-    model.fit(*to_arrays(train_df))
-    with open(args.model_path, 'wb') as f:
-        pickle.dump(model, f)
-
-    X_test, y_test = to_arrays(test_df)
-    reference_scores = model.score_batch(X_test)
-    weights = np.where(y_test == 1, 1.0, negative_weight(df))
-
-    rows = test_df.rename(columns=str.lower)[TRANSACTION_COLUMNS].to_dict('records')
-    for i, row in enumerate(rows):
-        row['transaction_id'] = i
+    rows, y_test, reference_scores, weights = prepare_workload(
+        args.data, args.model_path, args.limit)
 
     print("\n" + "=" * 80)
     print("ARCHITECTURE BENCHMARK")
     print("=" * 80)
     print(f"\n  {len(rows)} transactions ({int(y_test.sum())} fraud) at {args.rate:g}/s"
+          f" | {args.connections} connection(s)"
           f" | batch interval {args.batch_interval:g}s | {args.runs} runs")
 
     # Architectures take turns within each run, rather than one finishing
@@ -385,7 +469,8 @@ def main():
         for mode in args.modes:
             print(f"\n  Run {run}/{args.runs}: {mode}...")
             scores, measured = run_mode(
-                mode, dsn, rows, args.rate, args.batch_interval, args.model_path)
+                mode, dsn, rows, args.rate, args.batch_interval, args.model_path,
+                args.connections)
             measured['max_score_difference'] = float(np.abs(scores - reference_scores).max())
             measured['detection_real_prevalence'] = compute_metrics(
                 y_test, scores, args.threshold, weights)
@@ -415,6 +500,7 @@ def main():
         'transactions': len(rows),
         'fraud': int(y_test.sum()),
         'arrival_rate_per_s': args.rate,
+        'connections': args.connections,
         'batch_interval_s': args.batch_interval,
         'threshold': args.threshold,
         'runs': args.runs,
