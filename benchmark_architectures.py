@@ -85,19 +85,34 @@ CREATE TABLE bench_transactions (
 CREATE INDEX idx_bench_unscored ON bench_transactions (transaction_id)
     WHERE fraud_score IS NULL;
 
+-- A small table standing in for stored data (customer history, merchant
+-- statistics) that scoring may need to read. It is only used when lookups
+-- per transaction are requested (--lookups); the values are never fed to the
+-- model, so scores do not change. They exist to make the scoring step cost
+-- the database reads a real enrichment step would.
+DROP TABLE IF EXISTS bench_history;
+CREATE TABLE bench_history (key integer PRIMARY KEY, value double precision);
+INSERT INTO bench_history SELECT g, random() FROM generate_series(0, 999) AS g;
+
 CREATE EXTENSION IF NOT EXISTS plpython3u;
 
 -- The model is loaded once per database session and kept in SD, PL/Python's
--- per-function session cache; the trigger arguments say where to find it.
+-- per-function session cache; the trigger arguments say where to find it and
+-- how many history lookups to make per row (read locally, inside the database).
 CREATE OR REPLACE FUNCTION score_transaction() RETURNS trigger AS $$
     if 'model' not in SD:
         import sys
-        project_dir, model_path = TD['args']
+        project_dir, model_path, lookups = TD['args']
         if project_dir not in sys.path:
             sys.path.insert(0, project_dir)
         import near_data_scoring
         SD['score_rows'] = near_data_scoring.score_rows
         SD['model'] = near_data_scoring.load_model(model_path)
+        SD['lookups'] = int(lookups)
+        SD['history'] = plpy.prepare("SELECT value FROM bench_history WHERE key = $1", ["integer"])
+
+    for k in range(SD['lookups']):
+        plpy.execute(SD['history'], [(TD['new']['transaction_id'] + 7 * k) % 1000])
 
     TD['new']['fraud_score'] = float(SD['score_rows'](SD['model'], [TD['new']])[0])
     return 'MODIFY'
@@ -106,8 +121,13 @@ $$ LANGUAGE plpython3u;
 
 SCORING_TRIGGER = """
 CREATE TRIGGER score_on_insert BEFORE INSERT ON bench_transactions
-    FOR EACH ROW EXECUTE FUNCTION score_transaction({}, {})
+    FOR EACH ROW EXECUTE FUNCTION score_transaction({}, {}, {})
 """
+
+
+def history_key(transaction_id, k):
+    """Which history row lookup k of this transaction reads (same rule in SQL)"""
+    return (transaction_id + 7 * k) % 1000
 
 
 def process_usage(pid):
@@ -120,18 +140,30 @@ def process_usage(pid):
 
 
 def load_generator(mode, dsn, rows, rate, model_path, out_queue,
-                   index=0, count=1, go=None, start_time=None):
+                   index=0, count=1, go=None, start_time=None,
+                   lookups=0, autocommit=False):
     """Insert the transactions at a fixed arrival rate, one commit each
 
     With several connections, generator `index` of `count` handles every
     count-th transaction. All generators share one schedule (transaction i
     is due at start + i / rate) and wait on `go` so none starts before the
     others have finished their cold start.
+
+    With `lookups`, the application architecture reads that many history
+    rows over its connection before scoring each transaction; the
+    in-database architecture makes the same reads inside the trigger,
+    where they never cross the network.
     """
     ids = list(range(index, len(rows), count))
     conn = psycopg2.connect(dsn)
+    # Autocommit makes each statement its own round trip to the database, with
+    # no hidden BEGIN/COMMIT round trips, which matters when the database is
+    # far away. The default keeps the original benchmark's behaviour.
+    conn.autocommit = autocommit
     cur = conn.cursor()
     db_pid = conn.get_backend_pid()
+    if mode == 'application' and lookups:
+        cur.execute('PREPARE history(integer) AS SELECT value FROM bench_history WHERE key = $1')
 
     columns = ['transaction_id'] + TRANSACTION_COLUMNS
     if mode == 'application':
@@ -151,8 +183,14 @@ def load_generator(mode, dsn, rows, rate, model_path, out_queue,
         model = load_model(model_path)
         score_rows(model, rows[:1])
     elif mode == 'in_database':
-        cur.execute(insert, parameters(rows[0]))  # loads the model into this session
-        conn.rollback()
+        # loads the model into this session; the row is rolled back, not kept
+        if autocommit:
+            cur.execute('BEGIN')
+            cur.execute(insert, parameters(rows[0]))
+            cur.execute('ROLLBACK')
+        else:
+            cur.execute(insert, parameters(rows[0]))
+            conn.rollback()
     cold_start = time.perf_counter() - started
 
     app_cpu_before, _ = process_usage(os.getpid())
@@ -172,6 +210,9 @@ def load_generator(mode, dsn, rows, rate, model_path, out_queue,
 
         params = parameters(row)
         if mode == 'application':
+            for k in range(lookups):
+                cur.execute('EXECUTE history(%s)', (history_key(row['transaction_id'], k),))
+                cur.fetchone()
             params.append(float(score_rows(model, [row])[0]))
         cur.execute(insert, params)
         conn.commit()
@@ -194,8 +235,12 @@ def load_generator(mode, dsn, rows, rate, model_path, out_queue,
     conn.close()
 
 
-def batch_scorer(dsn, model_path, interval, expected, out_queue):
-    """Poll for unscored transactions, score them outside the database, write back"""
+def batch_scorer(dsn, model_path, interval, expected, out_queue, lookups=0):
+    """Poll for unscored transactions, score them outside the database, write back
+
+    With `lookups`, the history rows the batch needs are read in one
+    set-based query per poll, as a batch job would, not one query per row.
+    """
     started = time.perf_counter()
     model = load_model(model_path)
     cold_start = time.perf_counter() - started
@@ -225,6 +270,11 @@ def batch_scorer(dsn, model_path, interval, expected, out_queue):
         )
         rows = cur.fetchall()
         if rows:
+            if lookups:
+                keys = sorted({history_key(row['transaction_id'], k)
+                               for row in rows for k in range(lookups)})
+                cur.execute('SELECT key, value FROM bench_history WHERE key = ANY(%s)', (keys,))
+                cur.fetchall()
             scores = score_rows(model, rows)
             execute_values(
                 cur,
@@ -300,28 +350,38 @@ def median_of_runs(measurements):
     return float(np.median(measurements))
 
 
-def run_mode(mode, dsn, rows, rate, batch_interval, model_path, connections=1):
+def run_mode(mode, dsn, rows, rate, batch_interval, model_path, connections=1,
+             app_dsn=None, lookups=0, autocommit=False):
     """Run one architecture and return its measurements and stored scores
 
     `connections` is the number of concurrent database connections (and, for
     the application architecture, application scorer processes) the arrivals
     are spread across. Memory is summed over them, since each holds its own
     copy of the model.
+
+    `dsn` is used for setup and for reading the scores back. `app_dsn`, if
+    given, is the address the application-tier processes (the transaction
+    inserts and the batch scorer) connect to: pointing it at a delaying
+    proxy puts network distance between application and database.
+    `lookups` is the number of history reads per transaction (see
+    load_generator).
     """
+    app_dsn = app_dsn or dsn
     conn = psycopg2.connect(dsn)
     conn.autocommit = True
     cur = conn.cursor()
     cur.execute(SCHEMA)
     if mode == 'in_database':
         cur.execute(sql.SQL(SCORING_TRIGGER).format(
-            sql.Literal(PROJECT_DIR.as_posix()), sql.Literal(Path(model_path).resolve().as_posix())))
+            sql.Literal(PROJECT_DIR.as_posix()), sql.Literal(Path(model_path).resolve().as_posix()),
+            sql.Literal(str(lookups))))
 
     scorer = scorer_queue = None
     if mode == 'external_batch':
         scorer_queue = multiprocessing.Queue()
         scorer = multiprocessing.Process(
             target=batch_scorer, name='batch scorer',
-            args=(dsn, model_path, batch_interval, len(rows), scorer_queue))
+            args=(app_dsn, model_path, batch_interval, len(rows), scorer_queue, lookups))
         scorer.start()
         wait_for(scorer_queue, scorer)  # 'ready'
 
@@ -331,7 +391,8 @@ def run_mode(mode, dsn, rows, rate, batch_interval, model_path, connections=1):
     loaders = [
         multiprocessing.Process(
             target=load_generator, name=f'load generator {k + 1}',
-            args=(mode, dsn, rows, rate, model_path, loader_queue, k, connections, go, start_time))
+            args=(mode, app_dsn, rows, rate, model_path, loader_queue, k, connections, go, start_time,
+                  lookups, autocommit))
         for k in range(connections)
     ]
     for loader in loaders:

@@ -81,12 +81,12 @@ def is_quiet(state):
     return state['cpu_percent'] <= MAX_QUIET_CPU_PERCENT and state['available_gb'] >= MIN_QUIET_FREE_GB
 
 
-def wait_until_quiet(minutes):
-    """Poll until the machine has been quiet for ~20 s, or give up after `minutes`"""
+def wait_until_quiet(minutes, samples=10):
+    """Poll until the machine reads quiet (mean of `samples` 2-second readings), or give up"""
     deadline = time.time() + minutes * 60
     last_report = 0
     while True:
-        state = machine_state(samples=10)
+        state = machine_state(samples=samples)
         if is_quiet(state):
             return state
         if time.time() > deadline:
