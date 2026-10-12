@@ -1,0 +1,4762 @@
+{
+  "environment": {
+    "date": "2026-10-12T15:20:18",
+    "platform": "Windows-11-10.0.26300-SP0",
+    "python": "3.13.2",
+    "logical_cores": 8,
+    "physical_cores": 4,
+    "total_memory_gb": 11.8,
+    "postgres_version": "18.1",
+    "model_file_mb": 5.8,
+    "network": "loopback (application and database on one host)",
+    "commit": "e97ea37",
+    "uncommitted_changes": true
+  },
+  "settings": {
+    "rate_per_s": 5,
+    "connections": 4,
+    "transactions": 150,
+    "batch_interval_s": 10,
+    "runs": 3,
+    "one_way_ms": [
+      0,
+      1,
+      5,
+      25,
+      50
+    ],
+    "lookups": [
+      0,
+      3
+    ],
+    "modes": [
+      "external_batch",
+      "in_database",
+      "application"
+    ],
+    "autocommit": true,
+    "note": "lookups are stand-in reads; values are not used by the model"
+  },
+  "points": [
+    {
+      "one_way_ms": 0,
+      "measured_round_trip_ms": {
+        "median_ms": 1.0135500006072107,
+        "p95_ms": 1.3214000009611482
+      },
+      "lookups": 0,
+      "architectures": {
+        "external_batch": {
+          "connections": 4.0,
+          "duration_s": 29.803846836090088,
+          "achieved_rate_per_s": 5.032907356722889,
+          "final_backlog_ms": 3.846883773803711,
+          "max_batch_rows": 50.0,
+          "max_batch_seconds": 0.24012080000102287,
+          "ingest_latency_ms": {
+            "mean": 4.246571858723958,
+            "p50": 3.64530086517334,
+            "p95": 7.382440567016596,
+            "p99": 19.108703136443978,
+            "max": 53.7724494934082
+          },
+          "decision_latency_ms": {
+            "mean": 5119.687638282776,
+            "p50": 5106.92822933197,
+            "p95": 9527.551460266113,
+            "p99": 9927.012691497803,
+            "max": 10024.71661567688
+          },
+          "cold_start_s": 8.577793700000257,
+          "cpu_s_per_1000_txn": {
+            "application": 3.75,
+            "database": 0.9375,
+            "total": 5.416666666666667
+          },
+          "peak_memory_mb": {
+            "application": 192.34765625,
+            "database": 72.97265625
+          },
+          "max_score_difference": 0.0
+        },
+        "in_database": {
+          "connections": 4.0,
+          "duration_s": 29.855705499649048,
+          "achieved_rate_per_s": 5.0241653141227305,
+          "final_backlog_ms": 55.70554733276367,
+          "ingest_latency_ms": {
+            "mean": 57.23390579223633,
+            "p50": 55.55582046508789,
+            "p95": 65.48993587493895,
+            "p99": 77.71872043609618,
+            "max": 80.22618293762207
+          },
+          "decision_latency_ms": {
+            "mean": 57.23390579223633,
+            "p50": 55.55582046508789,
+            "p95": 65.48993587493895,
+            "p99": 77.71872043609618,
+            "max": 80.22618293762207
+          },
+          "cold_start_s": 8.846842700000707,
+          "cpu_s_per_1000_txn": {
+            "application": 0.4166666666666667,
+            "database": 53.22916666666667,
+            "total": 53.645833333333336
+          },
+          "peak_memory_mb": {
+            "application": 162.6015625,
+            "database": 805.0546875
+          },
+          "max_score_difference": 0.0
+        },
+        "application": {
+          "connections": 4.0,
+          "duration_s": 29.87532353401184,
+          "achieved_rate_per_s": 5.020866128168658,
+          "final_backlog_ms": 75.32358169555664,
+          "ingest_latency_ms": {
+            "mean": 59.12394046783447,
+            "p50": 56.624531745910645,
+            "p95": 70.76869010925292,
+            "p99": 90.28871536254873,
+            "max": 99.06005859375
+          },
+          "decision_latency_ms": {
+            "mean": 59.12394046783447,
+            "p50": 56.624531745910645,
+            "p95": 70.76869010925292,
+            "p99": 90.28871536254873,
+            "max": 99.06005859375
+          },
+          "cold_start_s": 8.212800799999968,
+          "cpu_s_per_1000_txn": {
+            "application": 54.583333333333336,
+            "database": 1.3541666666666667,
+            "total": 56.35416666666667
+          },
+          "peak_memory_mb": {
+            "application": 776.69140625,
+            "database": 72.796875
+          },
+          "max_score_difference": 0.0
+        }
+      },
+      "individual_runs": {
+        "external_batch": [
+          {
+            "connections": 4,
+            "duration_s": 29.80345582962036,
+            "achieved_rate_per_s": 5.032973385956185,
+            "final_backlog_ms": 3.4558773040771484,
+            "max_batch_rows": 50,
+            "max_batch_seconds": 0.24012080000102287,
+            "ingest_latency_ms": {
+              "mean": 4.246571858723958,
+              "p50": 3.3971071243286133,
+              "p95": 7.382440567016596,
+              "p99": 19.108703136443978,
+              "max": 53.7724494934082
+            },
+            "decision_latency_ms": {
+              "mean": 5127.2440274556475,
+              "p50": 5106.92822933197,
+              "p95": 9598.218476772308,
+              "p99": 9997.558076381683,
+              "max": 10024.71661567688
+            },
+            "cold_start_s": 8.660777500001132,
+            "cpu_s_per_1000_txn": {
+              "application": 3.75,
+              "database": 0.9375,
+              "total": 4.6875
+            },
+            "peak_memory_mb": {
+              "application": 192.2109375,
+              "database": 72.97265625
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.803846836090088,
+            "achieved_rate_per_s": 5.032907356722889,
+            "final_backlog_ms": 3.846883773803711,
+            "max_batch_rows": 51,
+            "max_batch_seconds": 0.2789721000008285,
+            "ingest_latency_ms": {
+              "mean": 5.731767018636067,
+              "p50": 3.758668899536133,
+              "p95": 11.23924255371092,
+              "p99": 50.744512081146084,
+              "max": 59.17048454284668
+            },
+            "decision_latency_ms": {
+              "mean": 5119.687638282776,
+              "p50": 5113.434195518494,
+              "p95": 9527.551460266113,
+              "p99": 9927.012691497803,
+              "max": 10120.142221450806
+            },
+            "cold_start_s": 7.787958699998853,
+            "cpu_s_per_1000_txn": {
+              "application": 3.6458333333333335,
+              "database": 3.125,
+              "total": 6.770833333333334
+            },
+            "peak_memory_mb": {
+              "application": 192.4921875,
+              "database": 72.953125
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.80433678627014,
+            "achieved_rate_per_s": 5.032824621318196,
+            "final_backlog_ms": 4.336833953857422,
+            "max_batch_rows": 50,
+            "max_batch_seconds": 0.23509090000152355,
+            "ingest_latency_ms": {
+              "mean": 4.100842475891113,
+              "p50": 3.64530086517334,
+              "p95": 6.60881996154785,
+              "p99": 10.370736122131325,
+              "max": 28.29718589782715
+            },
+            "decision_latency_ms": {
+              "mean": 5050.782842636108,
+              "p50": 5024.2050886154175,
+              "p95": 9516.415870189667,
+              "p99": 9915.719850063324,
+              "max": 9941.565752029419
+            },
+            "cold_start_s": 8.577793700000257,
+            "cpu_s_per_1000_txn": {
+              "application": 4.479166666666667,
+              "database": 0.9375,
+              "total": 5.416666666666667
+            },
+            "peak_memory_mb": {
+              "application": 192.34765625,
+              "database": 73.3125
+            },
+            "max_score_difference": 0.0
+          }
+        ],
+        "in_database": [
+          {
+            "connections": 4,
+            "duration_s": 29.855705499649048,
+            "achieved_rate_per_s": 5.0241653141227305,
+            "final_backlog_ms": 55.70554733276367,
+            "ingest_latency_ms": {
+              "mean": 52.74368762969971,
+              "p50": 52.870869636535645,
+              "p95": 60.39488315582275,
+              "p99": 68.99106264114374,
+              "max": 73.79770278930664
+            },
+            "decision_latency_ms": {
+              "mean": 52.74368762969971,
+              "p50": 52.870869636535645,
+              "p95": 60.39488315582275,
+              "p99": 68.99106264114374,
+              "max": 73.79770278930664
+            },
+            "cold_start_s": 8.414310500000283,
+            "cpu_s_per_1000_txn": {
+              "application": 0.10416666666666667,
+              "database": 49.583333333333336,
+              "total": 49.6875
+            },
+            "peak_memory_mb": {
+              "application": 162.5546875,
+              "database": 804.7890625
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.849905729293823,
+            "achieved_rate_per_s": 5.02514149827932,
+            "final_backlog_ms": 49.90577697753906,
+            "ingest_latency_ms": {
+              "mean": 59.11468982696533,
+              "p50": 56.47099018096924,
+              "p95": 74.88391399383545,
+              "p99": 86.79741382598871,
+              "max": 96.72999382019043
+            },
+            "decision_latency_ms": {
+              "mean": 59.11468982696533,
+              "p50": 56.47099018096924,
+              "p95": 74.88391399383545,
+              "p99": 86.79741382598871,
+              "max": 96.72999382019043
+            },
+            "cold_start_s": 9.639110699999947,
+            "cpu_s_per_1000_txn": {
+              "application": 1.3541666666666667,
+              "database": 55.625,
+              "total": 56.97916666666667
+            },
+            "peak_memory_mb": {
+              "application": 162.6015625,
+              "database": 805.0546875
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.861639976501465,
+            "achieved_rate_per_s": 5.023166849444205,
+            "final_backlog_ms": 61.640024185180664,
+            "ingest_latency_ms": {
+              "mean": 57.23390579223633,
+              "p50": 55.55582046508789,
+              "p95": 65.48993587493895,
+              "p99": 77.71872043609618,
+              "max": 80.22618293762207
+            },
+            "decision_latency_ms": {
+              "mean": 57.23390579223633,
+              "p50": 55.55582046508789,
+              "p95": 65.48993587493895,
+              "p99": 77.71872043609618,
+              "max": 80.22618293762207
+            },
+            "cold_start_s": 8.846842700000707,
+            "cpu_s_per_1000_txn": {
+              "application": 0.4166666666666667,
+              "database": 53.22916666666667,
+              "total": 53.645833333333336
+            },
+            "peak_memory_mb": {
+              "application": 162.9140625,
+              "database": 805.171875
+            },
+            "max_score_difference": 0.0
+          }
+        ],
+        "application": [
+          {
+            "connections": 4,
+            "duration_s": 29.871254205703735,
+            "achieved_rate_per_s": 5.021550115272977,
+            "final_backlog_ms": 71.25425338745117,
+            "ingest_latency_ms": {
+              "mean": 55.81307888031006,
+              "p50": 54.51095104217529,
+              "p95": 65.24161100387573,
+              "p99": 73.69451045989989,
+              "max": 95.63851356506348
+            },
+            "decision_latency_ms": {
+              "mean": 55.81307888031006,
+              "p50": 54.51095104217529,
+              "p95": 65.24161100387573,
+              "p99": 73.69451045989989,
+              "max": 95.63851356506348
+            },
+            "cold_start_s": 7.20207450000089,
+            "cpu_s_per_1000_txn": {
+              "application": 52.8125,
+              "database": 1.3541666666666667,
+              "total": 54.16666666666667
+            },
+            "peak_memory_mb": {
+              "application": 776.69140625,
+              "database": 72.7265625
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.87532353401184,
+            "achieved_rate_per_s": 5.020866128168658,
+            "final_backlog_ms": 75.32358169555664,
+            "ingest_latency_ms": {
+              "mean": 64.43511168162028,
+              "p50": 61.818480491638184,
+              "p95": 86.2724781036377,
+              "p99": 104.80767726898189,
+              "max": 108.34789276123047
+            },
+            "decision_latency_ms": {
+              "mean": 64.43511168162028,
+              "p50": 61.818480491638184,
+              "p95": 86.2724781036377,
+              "p99": 104.80767726898189,
+              "max": 108.34789276123047
+            },
+            "cold_start_s": 8.212800799999968,
+            "cpu_s_per_1000_txn": {
+              "application": 61.458333333333336,
+              "database": 1.25,
+              "total": 62.708333333333336
+            },
+            "peak_memory_mb": {
+              "application": 776.47265625,
+              "database": 72.89453125
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.895713090896606,
+            "achieved_rate_per_s": 5.017441783172442,
+            "final_backlog_ms": 95.71313858032227,
+            "ingest_latency_ms": {
+              "mean": 59.12394046783447,
+              "p50": 56.624531745910645,
+              "p95": 70.76869010925292,
+              "p99": 90.28871536254873,
+              "max": 99.06005859375
+            },
+            "decision_latency_ms": {
+              "mean": 59.12394046783447,
+              "p50": 56.624531745910645,
+              "p95": 70.76869010925292,
+              "p99": 90.28871536254873,
+              "max": 99.06005859375
+            },
+            "cold_start_s": 9.427595100001781,
+            "cpu_s_per_1000_txn": {
+              "application": 54.583333333333336,
+              "database": 1.7708333333333335,
+              "total": 56.35416666666667
+            },
+            "peak_memory_mb": {
+              "application": 776.98828125,
+              "database": 72.796875
+            },
+            "max_score_difference": 0.0
+          }
+        ]
+      },
+      "run_conditions": [
+        {
+          "run": 1,
+          "mode": "external_batch",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 3.3,
+          "available_gb_at_start": 4.47,
+          "other_programs_cpu_percent": 13.1
+        },
+        {
+          "run": 1,
+          "mode": "in_database",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 12.25,
+          "available_gb_at_start": 4.46,
+          "other_programs_cpu_percent": 7.4
+        },
+        {
+          "run": 1,
+          "mode": "application",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 17.75,
+          "available_gb_at_start": 4.5,
+          "other_programs_cpu_percent": 8.9
+        },
+        {
+          "run": 2,
+          "mode": "external_batch",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 4.7,
+          "available_gb_at_start": 4.6,
+          "other_programs_cpu_percent": 15.4
+        },
+        {
+          "run": 2,
+          "mode": "in_database",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 7.7,
+          "available_gb_at_start": 4.54,
+          "other_programs_cpu_percent": 13.6
+        },
+        {
+          "run": 2,
+          "mode": "application",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 8.9,
+          "available_gb_at_start": 4.59,
+          "other_programs_cpu_percent": 16.1
+        },
+        {
+          "run": 3,
+          "mode": "external_batch",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 6.449999999999999,
+          "available_gb_at_start": 4.56,
+          "other_programs_cpu_percent": 11.5
+        },
+        {
+          "run": 3,
+          "mode": "in_database",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 10.25,
+          "available_gb_at_start": 4.62,
+          "other_programs_cpu_percent": 10.9
+        },
+        {
+          "run": 3,
+          "mode": "application",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 8.15,
+          "available_gb_at_start": 4.56,
+          "other_programs_cpu_percent": 13.3
+        }
+      ]
+    },
+    {
+      "one_way_ms": 0,
+      "measured_round_trip_ms": {
+        "median_ms": 1.0135500006072107,
+        "p95_ms": 1.3214000009611482
+      },
+      "lookups": 3,
+      "architectures": {
+        "external_batch": {
+          "connections": 4.0,
+          "duration_s": 29.803730010986328,
+          "achieved_rate_per_s": 5.032927084787931,
+          "final_backlog_ms": 3.7300586700439453,
+          "max_batch_rows": 50.0,
+          "max_batch_seconds": 0.25509510000119917,
+          "ingest_latency_ms": {
+            "mean": 3.9629475275675454,
+            "p50": 3.470897674560547,
+            "p95": 7.024407386779782,
+            "p99": 10.520839691162074,
+            "max": 25.825977325439453
+          },
+          "decision_latency_ms": {
+            "mean": 5159.936831792195,
+            "p50": 5161.283731460571,
+            "p95": 9593.524181842804,
+            "p99": 9992.615549564362,
+            "max": 10047.530889511108
+          },
+          "cold_start_s": 8.127518999997847,
+          "cpu_s_per_1000_txn": {
+            "application": 3.125,
+            "database": 2.0833333333333335,
+            "total": 4.791666666666667
+          },
+          "peak_memory_mb": {
+            "application": 192.00390625,
+            "database": 73.17578125
+          },
+          "max_score_difference": 0.0
+        },
+        "in_database": {
+          "connections": 4.0,
+          "duration_s": 29.859114170074463,
+          "achieved_rate_per_s": 5.023591763158657,
+          "final_backlog_ms": 59.11421775817871,
+          "ingest_latency_ms": {
+            "mean": 60.81050395965576,
+            "p50": 57.45553970336914,
+            "p95": 81.22066259384155,
+            "p99": 129.04371738433807,
+            "max": 142.99654960632324
+          },
+          "decision_latency_ms": {
+            "mean": 60.81050395965576,
+            "p50": 57.45553970336914,
+            "p95": 81.22066259384155,
+            "p99": 129.04371738433807,
+            "max": 142.99654960632324
+          },
+          "cold_start_s": 9.155451099999482,
+          "cpu_s_per_1000_txn": {
+            "application": 0.625,
+            "database": 55.520833333333336,
+            "total": 56.5625
+          },
+          "peak_memory_mb": {
+            "application": 162.58203125,
+            "database": 805.65625
+          },
+          "max_score_difference": 0.0
+        },
+        "application": {
+          "connections": 4.0,
+          "duration_s": 29.888145685195923,
+          "achieved_rate_per_s": 5.018712153638136,
+          "final_backlog_ms": 88.14573287963867,
+          "ingest_latency_ms": {
+            "mean": 62.07281748453776,
+            "p50": 60.0053071975708,
+            "p95": 79.8922181129455,
+            "p99": 87.42246866226195,
+            "max": 105.64827919006348
+          },
+          "decision_latency_ms": {
+            "mean": 62.07281748453776,
+            "p50": 60.0053071975708,
+            "p95": 79.8922181129455,
+            "p99": 87.42246866226195,
+            "max": 105.64827919006348
+          },
+          "cold_start_s": 8.329652000000351,
+          "cpu_s_per_1000_txn": {
+            "application": 55.72916666666667,
+            "database": 2.8125,
+            "total": 57.395833333333336
+          },
+          "peak_memory_mb": {
+            "application": 776.8828125,
+            "database": 75.39453125
+          },
+          "max_score_difference": 0.0
+        }
+      },
+      "individual_runs": {
+        "external_batch": [
+          {
+            "connections": 4,
+            "duration_s": 29.802874326705933,
+            "achieved_rate_per_s": 5.0330715875142,
+            "final_backlog_ms": 2.8743743896484375,
+            "max_batch_rows": 50,
+            "max_batch_seconds": 0.3949447000013606,
+            "ingest_latency_ms": {
+              "mean": 8.397550582885742,
+              "p50": 4.953742027282715,
+              "p95": 34.80006456375113,
+              "p99": 61.16865634918203,
+              "max": 68.03441047668457
+            },
+            "decision_latency_ms": {
+              "mean": 5178.333996136983,
+              "p50": 5161.283731460571,
+              "p95": 9593.524181842804,
+              "p99": 9992.615549564362,
+              "max": 10141.538143157959
+            },
+            "cold_start_s": 9.78231980000055,
+            "cpu_s_per_1000_txn": {
+              "application": 5.3125,
+              "database": 2.3958333333333335,
+              "total": 7.708333333333334
+            },
+            "peak_memory_mb": {
+              "application": 192.00390625,
+              "database": 72.9765625
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.803876399993896,
+            "achieved_rate_per_s": 5.0329023643391135,
+            "final_backlog_ms": 3.8764476776123047,
+            "max_batch_rows": 50,
+            "max_batch_seconds": 0.2429848000028869,
+            "ingest_latency_ms": {
+              "mean": 3.831623395284017,
+              "p50": 3.4273862838745117,
+              "p95": 5.985045433044416,
+              "p99": 10.387525558471646,
+              "max": 25.825977325439453
+            },
+            "decision_latency_ms": {
+              "mean": 5159.936831792195,
+              "p50": 5209.834933280945,
+              "p95": 9628.135812282562,
+              "p99": 10027.893426418304,
+              "max": 10047.530889511108
+            },
+            "cold_start_s": 8.127518999997847,
+            "cpu_s_per_1000_txn": {
+              "application": 3.125,
+              "database": 1.3541666666666667,
+              "total": 4.479166666666667
+            },
+            "peak_memory_mb": {
+              "application": 191.72265625,
+              "database": 73.17578125
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.803730010986328,
+            "achieved_rate_per_s": 5.032927084787931,
+            "final_backlog_ms": 3.7300586700439453,
+            "max_batch_rows": 50,
+            "max_batch_seconds": 0.25509510000119917,
+            "ingest_latency_ms": {
+              "mean": 3.9629475275675454,
+              "p50": 3.470897674560547,
+              "p95": 7.024407386779782,
+              "p99": 10.520839691162074,
+              "max": 22.31454849243164
+            },
+            "decision_latency_ms": {
+              "mean": 5093.240714073181,
+              "p50": 5140.489339828491,
+              "p95": 9552.232074737549,
+              "p99": 9951.506385803223,
+              "max": 9978.835582733154
+            },
+            "cold_start_s": 7.860035900001094,
+            "cpu_s_per_1000_txn": {
+              "application": 2.7083333333333335,
+              "database": 2.0833333333333335,
+              "total": 4.791666666666667
+            },
+            "peak_memory_mb": {
+              "application": 192.40625,
+              "database": 73.3828125
+            },
+            "max_score_difference": 0.0
+          }
+        ],
+        "in_database": [
+          {
+            "connections": 4,
+            "duration_s": 29.859114170074463,
+            "achieved_rate_per_s": 5.023591763158657,
+            "final_backlog_ms": 59.11421775817871,
+            "ingest_latency_ms": {
+              "mean": 58.378876050313316,
+              "p50": 57.269930839538574,
+              "p95": 68.12641620635986,
+              "p99": 74.6636700630188,
+              "max": 77.52656936645508
+            },
+            "decision_latency_ms": {
+              "mean": 58.378876050313316,
+              "p50": 57.269930839538574,
+              "p95": 68.12641620635986,
+              "p99": 74.6636700630188,
+              "max": 77.52656936645508
+            },
+            "cold_start_s": 10.10157320000144,
+            "cpu_s_per_1000_txn": {
+              "application": 1.7708333333333335,
+              "database": 54.79166666666667,
+              "total": 56.5625
+            },
+            "peak_memory_mb": {
+              "application": 162.96484375,
+              "database": 803.36328125
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.85522150993347,
+            "achieved_rate_per_s": 5.024246761997454,
+            "final_backlog_ms": 55.2215576171875,
+            "ingest_latency_ms": {
+              "mean": 60.81050395965576,
+              "p50": 57.45553970336914,
+              "p95": 81.22066259384155,
+              "p99": 129.04371738433807,
+              "max": 159.59548950195312
+            },
+            "decision_latency_ms": {
+              "mean": 60.81050395965576,
+              "p50": 57.45553970336914,
+              "p95": 81.22066259384155,
+              "p99": 129.04371738433807,
+              "max": 159.59548950195312
+            },
+            "cold_start_s": 9.155451099999482,
+            "cpu_s_per_1000_txn": {
+              "application": 0.625,
+              "database": 55.520833333333336,
+              "total": 56.145833333333336
+            },
+            "peak_memory_mb": {
+              "application": 162.51953125,
+              "database": 806.39453125
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.902088165283203,
+            "achieved_rate_per_s": 5.01637207311001,
+            "final_backlog_ms": 102.08821296691895,
+            "ingest_latency_ms": {
+              "mean": 65.05728880564372,
+              "p50": 61.4776611328125,
+              "p95": 91.4965748786926,
+              "p99": 136.35164737701413,
+              "max": 142.99654960632324
+            },
+            "decision_latency_ms": {
+              "mean": 65.05728880564372,
+              "p50": 61.4776611328125,
+              "p95": 91.4965748786926,
+              "p99": 136.35164737701413,
+              "max": 142.99654960632324
+            },
+            "cold_start_s": 8.79965920000177,
+            "cpu_s_per_1000_txn": {
+              "application": 0.20833333333333334,
+              "database": 60.41666666666667,
+              "total": 60.625
+            },
+            "peak_memory_mb": {
+              "application": 162.58203125,
+              "database": 805.65625
+            },
+            "max_score_difference": 0.0
+          }
+        ],
+        "application": [
+          {
+            "connections": 4,
+            "duration_s": 29.8700430393219,
+            "achieved_rate_per_s": 5.0217537283938665,
+            "final_backlog_ms": 70.04308700561523,
+            "ingest_latency_ms": {
+              "mean": 61.68419361114502,
+              "p50": 60.0053071975708,
+              "p95": 73.92053604125977,
+              "p99": 83.68194341659542,
+              "max": 105.64827919006348
+            },
+            "decision_latency_ms": {
+              "mean": 61.68419361114502,
+              "p50": 60.0053071975708,
+              "p95": 73.92053604125977,
+              "p99": 83.68194341659542,
+              "max": 105.64827919006348
+            },
+            "cold_start_s": 8.197536300001957,
+            "cpu_s_per_1000_txn": {
+              "application": 53.85416666666667,
+              "database": 2.8125,
+              "total": 56.66666666666667
+            },
+            "peak_memory_mb": {
+              "application": 778.875,
+              "database": 75.39453125
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.888145685195923,
+            "achieved_rate_per_s": 5.018712153638136,
+            "final_backlog_ms": 88.14573287963867,
+            "ingest_latency_ms": {
+              "mean": 62.07281748453776,
+              "p50": 59.5097541809082,
+              "p95": 79.8922181129455,
+              "p99": 87.42246866226195,
+              "max": 89.42008018493652
+            },
+            "decision_latency_ms": {
+              "mean": 62.07281748453776,
+              "p50": 59.5097541809082,
+              "p95": 79.8922181129455,
+              "p99": 87.42246866226195,
+              "max": 89.42008018493652
+            },
+            "cold_start_s": 8.329652000000351,
+            "cpu_s_per_1000_txn": {
+              "application": 55.72916666666667,
+              "database": 1.6666666666666667,
+              "total": 57.395833333333336
+            },
+            "peak_memory_mb": {
+              "application": 776.61328125,
+              "database": 75.72265625
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.911497592926025,
+            "achieved_rate_per_s": 5.014794044798163,
+            "final_backlog_ms": 111.49764060974121,
+            "ingest_latency_ms": {
+              "mean": 68.63818963368733,
+              "p50": 65.86849689483643,
+              "p95": 94.64396238327025,
+              "p99": 124.12189960479719,
+              "max": 137.12573051452637
+            },
+            "decision_latency_ms": {
+              "mean": 68.63818963368733,
+              "p50": 65.86849689483643,
+              "p95": 94.64396238327025,
+              "p99": 124.12189960479719,
+              "max": 137.12573051452637
+            },
+            "cold_start_s": 8.50304270000197,
+            "cpu_s_per_1000_txn": {
+              "application": 57.60416666666667,
+              "database": 3.229166666666667,
+              "total": 60.833333333333336
+            },
+            "peak_memory_mb": {
+              "application": 776.8828125,
+              "database": 75.28515625
+            },
+            "max_score_difference": 0.0
+          }
+        ]
+      },
+      "run_conditions": [
+        {
+          "run": 1,
+          "mode": "external_batch",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 9.95,
+          "available_gb_at_start": 4.6,
+          "other_programs_cpu_percent": 35.3
+        },
+        {
+          "run": 1,
+          "mode": "in_database",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 17.8,
+          "available_gb_at_start": 4.4,
+          "other_programs_cpu_percent": 14.6
+        },
+        {
+          "run": 1,
+          "mode": "application",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 7.45,
+          "available_gb_at_start": 4.62,
+          "other_programs_cpu_percent": 12.1
+        },
+        {
+          "run": 2,
+          "mode": "external_batch",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 1.25,
+          "available_gb_at_start": 4.6,
+          "other_programs_cpu_percent": 8.7
+        },
+        {
+          "run": 2,
+          "mode": "in_database",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 11.2,
+          "available_gb_at_start": 4.65,
+          "other_programs_cpu_percent": 16.6
+        },
+        {
+          "run": 2,
+          "mode": "application",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 12.799999999999999,
+          "available_gb_at_start": 4.59,
+          "other_programs_cpu_percent": 11.1
+        },
+        {
+          "run": 3,
+          "mode": "external_batch",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 6.6000000000000005,
+          "available_gb_at_start": 4.64,
+          "other_programs_cpu_percent": 10.7
+        },
+        {
+          "run": 3,
+          "mode": "in_database",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 10.75,
+          "available_gb_at_start": 4.59,
+          "other_programs_cpu_percent": 23.7
+        },
+        {
+          "run": 3,
+          "mode": "application",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 2.05,
+          "available_gb_at_start": 4.64,
+          "other_programs_cpu_percent": 15.0
+        }
+      ]
+    },
+    {
+      "one_way_ms": 1,
+      "measured_round_trip_ms": {
+        "median_ms": 4.005650000181049,
+        "p95_ms": 5.0648000033106655
+      },
+      "lookups": 0,
+      "architectures": {
+        "external_batch": {
+          "connections": 4.0,
+          "duration_s": 29.807419300079346,
+          "achieved_rate_per_s": 5.032304155214159,
+          "final_backlog_ms": 7.419347763061523,
+          "max_batch_rows": 50.0,
+          "max_batch_seconds": 0.2501116000021284,
+          "ingest_latency_ms": {
+            "mean": 10.100833574930826,
+            "p50": 7.337689399719238,
+            "p95": 18.73722076416015,
+            "p99": 63.52640867233271,
+            "max": 69.0314769744873
+          },
+          "decision_latency_ms": {
+            "mean": 5084.706269900004,
+            "p50": 5066.902279853821,
+            "p95": 9515.513396263123,
+            "p99": 9913.930983543396,
+            "max": 10040.050745010376
+          },
+          "cold_start_s": 8.115073699998902,
+          "cpu_s_per_1000_txn": {
+            "application": 3.229166666666667,
+            "database": 1.4583333333333335,
+            "total": 4.375
+          },
+          "peak_memory_mb": {
+            "application": 191.703125,
+            "database": 73.0859375
+          },
+          "max_score_difference": 0.0
+        },
+        "in_database": {
+          "connections": 4.0,
+          "duration_s": 29.864657402038574,
+          "achieved_rate_per_s": 5.02265932539246,
+          "final_backlog_ms": 64.65744972229004,
+          "ingest_latency_ms": {
+            "mean": 60.31904856363932,
+            "p50": 58.237433433532715,
+            "p95": 72.19327688217163,
+            "p99": 90.34779071807853,
+            "max": 108.02555084228516
+          },
+          "decision_latency_ms": {
+            "mean": 60.31904856363932,
+            "p50": 58.237433433532715,
+            "p95": 72.19327688217163,
+            "p99": 90.34779071807853,
+            "max": 108.02555084228516
+          },
+          "cold_start_s": 9.701513799998793,
+          "cpu_s_per_1000_txn": {
+            "application": 0.4166666666666667,
+            "database": 54.0625,
+            "total": 54.16666666666667
+          },
+          "peak_memory_mb": {
+            "application": 162.8359375,
+            "database": 805.015625
+          },
+          "max_score_difference": 0.0
+        },
+        "application": {
+          "connections": 4.0,
+          "duration_s": 29.878577947616577,
+          "achieved_rate_per_s": 5.020319248894024,
+          "final_backlog_ms": 78.57799530029297,
+          "ingest_latency_ms": {
+            "mean": 62.405080795288086,
+            "p50": 60.071468353271484,
+            "p95": 77.44433879852294,
+            "p99": 90.46801567077637,
+            "max": 92.90003776550293
+          },
+          "decision_latency_ms": {
+            "mean": 62.405080795288086,
+            "p50": 60.071468353271484,
+            "p95": 77.44433879852294,
+            "p99": 90.46801567077637,
+            "max": 92.90003776550293
+          },
+          "cold_start_s": 8.266994199999317,
+          "cpu_s_per_1000_txn": {
+            "application": 54.270833333333336,
+            "database": 1.25,
+            "total": 55.520833333333336
+          },
+          "peak_memory_mb": {
+            "application": 777.5703125,
+            "database": 72.77734375
+          },
+          "max_score_difference": 0.0
+        }
+      },
+      "individual_runs": {
+        "external_batch": [
+          {
+            "connections": 4,
+            "duration_s": 29.806466102600098,
+            "achieved_rate_per_s": 5.032465086054435,
+            "final_backlog_ms": 6.466150283813477,
+            "max_batch_rows": 50,
+            "max_batch_seconds": 0.27011660000061966,
+            "ingest_latency_ms": {
+              "mean": 10.100833574930826,
+              "p50": 8.094191551208496,
+              "p95": 18.73722076416015,
+              "p99": 63.52640867233271,
+              "max": 69.0314769744873
+            },
+            "decision_latency_ms": {
+              "mean": 5084.706269900004,
+              "p50": 5066.902279853821,
+              "p95": 9515.513396263123,
+              "p99": 9913.930983543396,
+              "max": 10040.050745010376
+            },
+            "cold_start_s": 9.065209100001084,
+            "cpu_s_per_1000_txn": {
+              "application": 4.583333333333334,
+              "database": 2.0833333333333335,
+              "total": 6.666666666666667
+            },
+            "peak_memory_mb": {
+              "application": 191.703125,
+              "database": 72.875
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.809898853302002,
+            "achieved_rate_per_s": 5.031885573921855,
+            "final_backlog_ms": 9.898900985717773,
+            "max_batch_rows": 50,
+            "max_batch_seconds": 0.2407972000000882,
+            "ingest_latency_ms": {
+              "mean": 7.3853715260823565,
+              "p50": 7.1258544921875,
+              "p95": 9.981250762939451,
+              "p99": 15.082247257232627,
+              "max": 25.829792022705078
+            },
+            "decision_latency_ms": {
+              "mean": 5034.2288366953535,
+              "p50": 5008.136630058289,
+              "p95": 9500.972986221313,
+              "p99": 9900.16360282898,
+              "max": 9926.430702209473
+            },
+            "cold_start_s": 8.010164200000872,
+            "cpu_s_per_1000_txn": {
+              "application": 2.916666666666667,
+              "database": 1.4583333333333335,
+              "total": 4.375
+            },
+            "peak_memory_mb": {
+              "application": 191.26953125,
+              "database": 73.0859375
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.807419300079346,
+            "achieved_rate_per_s": 5.032304155214159,
+            "final_backlog_ms": 7.419347763061523,
+            "max_batch_rows": 50,
+            "max_batch_seconds": 0.2501116000021284,
+            "ingest_latency_ms": {
+              "mean": 10.683830579121908,
+              "p50": 7.337689399719238,
+              "p95": 35.03895998001086,
+              "p99": 69.75349903106685,
+              "max": 72.39770889282227
+            },
+            "decision_latency_ms": {
+              "mean": 5189.122063318889,
+              "p50": 5163.337826728821,
+              "p95": 9651.928889751434,
+              "p99": 10051.483724117279,
+              "max": 10080.86895942688
+            },
+            "cold_start_s": 8.115073699998902,
+            "cpu_s_per_1000_txn": {
+              "application": 3.229166666666667,
+              "database": 0.8333333333333334,
+              "total": 4.0625
+            },
+            "peak_memory_mb": {
+              "application": 192.47265625,
+              "database": 73.2109375
+            },
+            "max_score_difference": 0.0
+          }
+        ],
+        "in_database": [
+          {
+            "connections": 4,
+            "duration_s": 29.870555877685547,
+            "achieved_rate_per_s": 5.021667511452499,
+            "final_backlog_ms": 70.5559253692627,
+            "ingest_latency_ms": {
+              "mean": 61.50846640268961,
+              "p50": 58.63785743713379,
+              "p95": 80.41744232177734,
+              "p99": 90.99520206451407,
+              "max": 108.02555084228516
+            },
+            "decision_latency_ms": {
+              "mean": 61.50846640268961,
+              "p50": 58.63785743713379,
+              "p95": 80.41744232177734,
+              "p99": 90.99520206451407,
+              "max": 108.02555084228516
+            },
+            "cold_start_s": 9.15404320000016,
+            "cpu_s_per_1000_txn": {
+              "application": 0.4166666666666667,
+              "database": 54.895833333333336,
+              "total": 55.3125
+            },
+            "peak_memory_mb": {
+              "application": 162.92578125,
+              "database": 805.015625
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.860376596450806,
+            "achieved_rate_per_s": 5.0233793775336695,
+            "final_backlog_ms": 60.376644134521484,
+            "ingest_latency_ms": {
+              "mean": 57.78040885925293,
+              "p50": 56.13267421722412,
+              "p95": 70.42356729507445,
+              "p99": 90.34779071807853,
+              "max": 113.37757110595703
+            },
+            "decision_latency_ms": {
+              "mean": 57.78040885925293,
+              "p50": 56.13267421722412,
+              "p95": 70.42356729507445,
+              "p99": 90.34779071807853,
+              "max": 113.37757110595703
+            },
+            "cold_start_s": 9.701513799998793,
+            "cpu_s_per_1000_txn": {
+              "application": 2.291666666666667,
+              "database": 51.145833333333336,
+              "total": 53.4375
+            },
+            "peak_memory_mb": {
+              "application": 162.8359375,
+              "database": 805.78125
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.864657402038574,
+            "achieved_rate_per_s": 5.02265932539246,
+            "final_backlog_ms": 64.65744972229004,
+            "ingest_latency_ms": {
+              "mean": 60.31904856363932,
+              "p50": 58.237433433532715,
+              "p95": 72.19327688217163,
+              "p99": 80.63584089279173,
+              "max": 97.68056869506836
+            },
+            "decision_latency_ms": {
+              "mean": 60.31904856363932,
+              "p50": 58.237433433532715,
+              "p95": 72.19327688217163,
+              "p99": 80.63584089279173,
+              "max": 97.68056869506836
+            },
+            "cold_start_s": 9.852144899999985,
+            "cpu_s_per_1000_txn": {
+              "application": 0.10416666666666667,
+              "database": 54.0625,
+              "total": 54.16666666666667
+            },
+            "peak_memory_mb": {
+              "application": 161.6953125,
+              "database": 803.625
+            },
+            "max_score_difference": 0.0
+          }
+        ],
+        "application": [
+          {
+            "connections": 4,
+            "duration_s": 29.872533082962036,
+            "achieved_rate_per_s": 5.0213351369774974,
+            "final_backlog_ms": 72.53313064575195,
+            "ingest_latency_ms": {
+              "mean": 62.405080795288086,
+              "p50": 60.071468353271484,
+              "p95": 75.8793234825134,
+              "p99": 83.43940496444701,
+              "max": 90.46459197998047
+            },
+            "decision_latency_ms": {
+              "mean": 62.405080795288086,
+              "p50": 60.071468353271484,
+              "p95": 75.8793234825134,
+              "p99": 83.43940496444701,
+              "max": 90.46459197998047
+            },
+            "cold_start_s": 8.501229800000146,
+            "cpu_s_per_1000_txn": {
+              "application": 54.270833333333336,
+              "database": 1.25,
+              "total": 55.520833333333336
+            },
+            "peak_memory_mb": {
+              "application": 775.875,
+              "database": 73.26953125
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.878577947616577,
+            "achieved_rate_per_s": 5.020319248894024,
+            "final_backlog_ms": 78.57799530029297,
+            "ingest_latency_ms": {
+              "mean": 61.42409324645996,
+              "p50": 58.746337890625,
+              "p95": 77.44433879852294,
+              "p99": 90.46801567077637,
+              "max": 92.90003776550293
+            },
+            "decision_latency_ms": {
+              "mean": 61.42409324645996,
+              "p50": 58.746337890625,
+              "p95": 77.44433879852294,
+              "p99": 90.46801567077637,
+              "max": 92.90003776550293
+            },
+            "cold_start_s": 8.266994199999317,
+            "cpu_s_per_1000_txn": {
+              "application": 53.125,
+              "database": 1.5625,
+              "total": 54.6875
+            },
+            "peak_memory_mb": {
+              "application": 777.80078125,
+              "database": 72.77734375
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.93217921257019,
+            "achieved_rate_per_s": 5.0113290761337765,
+            "final_backlog_ms": 132.17926025390625,
+            "ingest_latency_ms": {
+              "mean": 105.47838528951009,
+              "p50": 99.79581832885742,
+              "p95": 188.437795639038,
+              "p99": 273.2033514976496,
+              "max": 329.1473388671875
+            },
+            "decision_latency_ms": {
+              "mean": 105.47838528951009,
+              "p50": 99.79581832885742,
+              "p95": 188.437795639038,
+              "p99": 273.2033514976496,
+              "max": 329.1473388671875
+            },
+            "cold_start_s": 7.8364913999976125,
+            "cpu_s_per_1000_txn": {
+              "application": 78.85416666666667,
+              "database": 1.25,
+              "total": 80.10416666666667
+            },
+            "peak_memory_mb": {
+              "application": 777.5703125,
+              "database": 72.77734375
+            },
+            "max_score_difference": 0.0
+          }
+        ]
+      },
+      "run_conditions": [
+        {
+          "run": 1,
+          "mode": "external_batch",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 8.85,
+          "available_gb_at_start": 4.59,
+          "other_programs_cpu_percent": 20.7
+        },
+        {
+          "run": 1,
+          "mode": "in_database",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 4.3,
+          "available_gb_at_start": 4.56,
+          "other_programs_cpu_percent": 14.7
+        },
+        {
+          "run": 1,
+          "mode": "application",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 16.55,
+          "available_gb_at_start": 4.58,
+          "other_programs_cpu_percent": 12.2
+        },
+        {
+          "run": 2,
+          "mode": "external_batch",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 1.7000000000000002,
+          "available_gb_at_start": 4.6,
+          "other_programs_cpu_percent": 11.2
+        },
+        {
+          "run": 2,
+          "mode": "in_database",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 11.55,
+          "available_gb_at_start": 4.64,
+          "other_programs_cpu_percent": 13.6
+        },
+        {
+          "run": 2,
+          "mode": "application",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 12.3,
+          "available_gb_at_start": 4.64,
+          "other_programs_cpu_percent": 11.1
+        },
+        {
+          "run": 3,
+          "mode": "external_batch",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 10.6,
+          "available_gb_at_start": 4.67,
+          "other_programs_cpu_percent": 13.0
+        },
+        {
+          "run": 3,
+          "mode": "in_database",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 7.0,
+          "available_gb_at_start": 4.6,
+          "other_programs_cpu_percent": 12.0
+        },
+        {
+          "run": 3,
+          "mode": "application",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 11.65,
+          "available_gb_at_start": 4.79,
+          "other_programs_cpu_percent": 31.9
+        }
+      ]
+    },
+    {
+      "one_way_ms": 1,
+      "measured_round_trip_ms": {
+        "median_ms": 4.005650000181049,
+        "p95_ms": 5.0648000033106655
+      },
+      "lookups": 3,
+      "architectures": {
+        "external_batch": {
+          "connections": 4.0,
+          "duration_s": 29.808184385299683,
+          "achieved_rate_per_s": 5.03217499130791,
+          "final_backlog_ms": 8.184432983398438,
+          "max_batch_rows": 50.0,
+          "max_batch_seconds": 0.26641620000009425,
+          "ingest_latency_ms": {
+            "mean": 8.149662017822266,
+            "p50": 7.1686506271362305,
+            "p95": 12.718200683593748,
+            "p99": 31.93593502044667,
+            "max": 65.26446342468262
+          },
+          "decision_latency_ms": {
+            "mean": 5104.001205762227,
+            "p50": 5078.044533729553,
+            "p95": 9572.971451282501,
+            "p99": 9972.806379795074,
+            "max": 9985.38875579834
+          },
+          "cold_start_s": 8.643701199998759,
+          "cpu_s_per_1000_txn": {
+            "application": 3.4375,
+            "database": 1.1458333333333335,
+            "total": 4.583333333333334
+          },
+          "peak_memory_mb": {
+            "application": 192.0,
+            "database": 73.0546875
+          },
+          "max_score_difference": 0.0
+        },
+        "in_database": {
+          "connections": 4.0,
+          "duration_s": 29.85334062576294,
+          "achieved_rate_per_s": 5.024563310363748,
+          "final_backlog_ms": 53.34067344665527,
+          "ingest_latency_ms": {
+            "mean": 60.24704456329346,
+            "p50": 58.26711654663086,
+            "p95": 72.61363267898558,
+            "p99": 88.2438182830809,
+            "max": 112.07365989685059
+          },
+          "decision_latency_ms": {
+            "mean": 60.24704456329346,
+            "p50": 58.26711654663086,
+            "p95": 72.61363267898558,
+            "p99": 88.2438182830809,
+            "max": 112.07365989685059
+          },
+          "cold_start_s": 8.239490100000694,
+          "cpu_s_per_1000_txn": {
+            "application": 0.4166666666666667,
+            "database": 53.4375,
+            "total": 53.85416666666667
+          },
+          "peak_memory_mb": {
+            "application": 162.453125,
+            "database": 805.05859375
+          },
+          "max_score_difference": 0.0
+        },
+        "application": {
+          "connections": 4.0,
+          "duration_s": 29.91644549369812,
+          "achieved_rate_per_s": 5.013964644683386,
+          "final_backlog_ms": 116.44554138183594,
+          "ingest_latency_ms": {
+            "mean": 76.07436180114746,
+            "p50": 72.38221168518066,
+            "p95": 93.92900466918945,
+            "p99": 105.150249004364,
+            "max": 116.44554138183594
+          },
+          "decision_latency_ms": {
+            "mean": 76.07436180114746,
+            "p50": 72.38221168518066,
+            "p95": 93.92900466918945,
+            "p99": 105.150249004364,
+            "max": 116.44554138183594
+          },
+          "cold_start_s": 8.21228340000016,
+          "cpu_s_per_1000_txn": {
+            "application": 53.75,
+            "database": 2.7083333333333335,
+            "total": 57.1875
+          },
+          "peak_memory_mb": {
+            "application": 777.1875,
+            "database": 75.484375
+          },
+          "max_score_difference": 0.0
+        }
+      },
+      "individual_runs": {
+        "external_batch": [
+          {
+            "connections": 4,
+            "duration_s": 29.80936050415039,
+            "achieved_rate_per_s": 5.031976448441936,
+            "final_backlog_ms": 9.360551834106445,
+            "max_batch_rows": 50,
+            "max_batch_seconds": 0.27656520000164164,
+            "ingest_latency_ms": {
+              "mean": 9.327831268310547,
+              "p50": 7.4454545974731445,
+              "p95": 17.244327068328754,
+              "p99": 59.09858942031855,
+              "max": 65.26446342468262
+            },
+            "decision_latency_ms": {
+              "mean": 5135.541413625081,
+              "p50": 5138.90814781189,
+              "p95": 9590.338385105133,
+              "p99": 9989.426691532135,
+              "max": 10100.011825561523
+            },
+            "cold_start_s": 8.643701199998759,
+            "cpu_s_per_1000_txn": {
+              "application": 3.4375,
+              "database": 0.9375,
+              "total": 4.375
+            },
+            "peak_memory_mb": {
+              "application": 191.77734375,
+              "database": 73.0390625
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.806854724884033,
+            "achieved_rate_per_s": 5.032399472688193,
+            "final_backlog_ms": 6.854772567749023,
+            "max_batch_rows": 50,
+            "max_batch_seconds": 0.24825050000072224,
+            "ingest_latency_ms": {
+              "mean": 7.793817520141602,
+              "p50": 6.9571733474731445,
+              "p95": 10.297441482543935,
+              "p99": 18.988893032073882,
+              "max": 78.84716987609863
+            },
+            "decision_latency_ms": {
+              "mean": 5019.819116592407,
+              "p50": 5060.396790504456,
+              "p95": 9479.757523536682,
+              "p99": 9879.323143959045,
+              "max": 9914.415121078491
+            },
+            "cold_start_s": 8.08544890000121,
+            "cpu_s_per_1000_txn": {
+              "application": 3.3333333333333335,
+              "database": 1.4583333333333335,
+              "total": 4.791666666666667
+            },
+            "peak_memory_mb": {
+              "application": 192.0,
+              "database": 73.0546875
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.808184385299683,
+            "achieved_rate_per_s": 5.03217499130791,
+            "final_backlog_ms": 8.184432983398438,
+            "max_batch_rows": 50,
+            "max_batch_seconds": 0.26641620000009425,
+            "ingest_latency_ms": {
+              "mean": 8.149662017822266,
+              "p50": 7.1686506271362305,
+              "p95": 12.718200683593748,
+              "p99": 31.93593502044667,
+              "max": 52.69217491149902
+            },
+            "decision_latency_ms": {
+              "mean": 5104.001205762227,
+              "p50": 5078.044533729553,
+              "p95": 9572.971451282501,
+              "p99": 9972.806379795074,
+              "max": 9985.38875579834
+            },
+            "cold_start_s": 9.273090000002412,
+            "cpu_s_per_1000_txn": {
+              "application": 3.4375,
+              "database": 1.1458333333333335,
+              "total": 4.583333333333334
+            },
+            "peak_memory_mb": {
+              "application": 192.04296875,
+              "database": 73.2734375
+            },
+            "max_score_difference": 0.0
+          }
+        ],
+        "in_database": [
+          {
+            "connections": 4,
+            "duration_s": 29.852083206176758,
+            "achieved_rate_per_s": 5.024774953359476,
+            "final_backlog_ms": 52.08325386047363,
+            "ingest_latency_ms": {
+              "mean": 60.18317222595215,
+              "p50": 58.39717388153076,
+              "p95": 72.61363267898558,
+              "p99": 77.90243625640863,
+              "max": 113.49725723266602
+            },
+            "decision_latency_ms": {
+              "mean": 60.18317222595215,
+              "p50": 58.39717388153076,
+              "p95": 72.61363267898558,
+              "p99": 77.90243625640863,
+              "max": 113.49725723266602
+            },
+            "cold_start_s": 7.9846031999986735,
+            "cpu_s_per_1000_txn": {
+              "application": 0.20833333333333334,
+              "database": 52.5,
+              "total": 52.708333333333336
+            },
+            "peak_memory_mb": {
+              "application": 162.453125,
+              "database": 805.05859375
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.85334062576294,
+            "achieved_rate_per_s": 5.024563310363748,
+            "final_backlog_ms": 53.34067344665527,
+            "ingest_latency_ms": {
+              "mean": 62.37016995747884,
+              "p50": 58.20882320404053,
+              "p95": 90.80294370651238,
+              "p99": 107.81418800353998,
+              "max": 112.07365989685059
+            },
+            "decision_latency_ms": {
+              "mean": 62.37016995747884,
+              "p50": 58.20882320404053,
+              "p95": 90.80294370651238,
+              "p99": 107.81418800353998,
+              "max": 112.07365989685059
+            },
+            "cold_start_s": 8.239490100000694,
+            "cpu_s_per_1000_txn": {
+              "application": 1.7708333333333335,
+              "database": 54.270833333333336,
+              "total": 56.04166666666667
+            },
+            "peak_memory_mb": {
+              "application": 162.29296875,
+              "database": 805.1484375
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.855945110321045,
+            "achieved_rate_per_s": 5.024124992383704,
+            "final_backlog_ms": 55.94515800476074,
+            "ingest_latency_ms": {
+              "mean": 60.24704456329346,
+              "p50": 58.26711654663086,
+              "p95": 71.20076417922974,
+              "p99": 88.2438182830809,
+              "max": 98.26374053955078
+            },
+            "decision_latency_ms": {
+              "mean": 60.24704456329346,
+              "p50": 58.26711654663086,
+              "p95": 71.20076417922974,
+              "p99": 88.2438182830809,
+              "max": 98.26374053955078
+            },
+            "cold_start_s": 10.04382120000082,
+            "cpu_s_per_1000_txn": {
+              "application": 0.4166666666666667,
+              "database": 53.4375,
+              "total": 53.85416666666667
+            },
+            "peak_memory_mb": {
+              "application": 162.58203125,
+              "database": 804.359375
+            },
+            "max_score_difference": 0.0
+          }
+        ],
+        "application": [
+          {
+            "connections": 4,
+            "duration_s": 29.91644549369812,
+            "achieved_rate_per_s": 5.013964644683386,
+            "final_backlog_ms": 116.44554138183594,
+            "ingest_latency_ms": {
+              "mean": 74.85405762990315,
+              "p50": 71.42555713653564,
+              "p95": 93.92900466918945,
+              "p99": 103.40593099594112,
+              "max": 116.44554138183594
+            },
+            "decision_latency_ms": {
+              "mean": 74.85405762990315,
+              "p50": 71.42555713653564,
+              "p95": 93.92900466918945,
+              "p99": 103.40593099594112,
+              "max": 116.44554138183594
+            },
+            "cold_start_s": 8.21228340000016,
+            "cpu_s_per_1000_txn": {
+              "application": 52.708333333333336,
+              "database": 2.7083333333333335,
+              "total": 55.41666666666667
+            },
+            "peak_memory_mb": {
+              "application": 776.08984375,
+              "database": 75.484375
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.919066190719604,
+            "achieved_rate_per_s": 5.013525457105593,
+            "final_backlog_ms": 119.06623840332031,
+            "ingest_latency_ms": {
+              "mean": 76.07436180114746,
+              "p50": 72.38221168518066,
+              "p95": 92.3176884651184,
+              "p99": 117.85826683044431,
+              "max": 125.16379356384277
+            },
+            "decision_latency_ms": {
+              "mean": 76.07436180114746,
+              "p50": 72.38221168518066,
+              "p95": 92.3176884651184,
+              "p99": 117.85826683044431,
+              "max": 125.16379356384277
+            },
+            "cold_start_s": 8.629593300000124,
+            "cpu_s_per_1000_txn": {
+              "application": 54.47916666666667,
+              "database": 2.7083333333333335,
+              "total": 57.1875
+            },
+            "peak_memory_mb": {
+              "application": 777.1875,
+              "database": 75.56640625
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.898033142089844,
+            "achieved_rate_per_s": 5.017052435761503,
+            "final_backlog_ms": 98.03318977355957,
+            "ingest_latency_ms": {
+              "mean": 77.06218083699544,
+              "p50": 73.25577735900879,
+              "p95": 96.0798978805542,
+              "p99": 105.150249004364,
+              "max": 113.42096328735352
+            },
+            "decision_latency_ms": {
+              "mean": 77.06218083699544,
+              "p50": 73.25577735900879,
+              "p95": 96.0798978805542,
+              "p99": 105.150249004364,
+              "max": 113.42096328735352
+            },
+            "cold_start_s": 7.787093599999935,
+            "cpu_s_per_1000_txn": {
+              "application": 53.75,
+              "database": 3.6458333333333335,
+              "total": 57.395833333333336
+            },
+            "peak_memory_mb": {
+              "application": 778.23828125,
+              "database": 75.4609375
+            },
+            "max_score_difference": 0.0
+          }
+        ]
+      },
+      "run_conditions": [
+        {
+          "run": 1,
+          "mode": "external_batch",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 15.95,
+          "available_gb_at_start": 4.53,
+          "other_programs_cpu_percent": 17.6
+        },
+        {
+          "run": 1,
+          "mode": "in_database",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 1.35,
+          "available_gb_at_start": 4.59,
+          "other_programs_cpu_percent": 11.1
+        },
+        {
+          "run": 1,
+          "mode": "application",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 11.200000000000001,
+          "available_gb_at_start": 4.76,
+          "other_programs_cpu_percent": 12.6
+        },
+        {
+          "run": 2,
+          "mode": "external_batch",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 15.3,
+          "available_gb_at_start": 4.75,
+          "other_programs_cpu_percent": 8.7
+        },
+        {
+          "run": 2,
+          "mode": "in_database",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 11.149999999999999,
+          "available_gb_at_start": 4.79,
+          "other_programs_cpu_percent": 10.1
+        },
+        {
+          "run": 2,
+          "mode": "application",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 12.649999999999999,
+          "available_gb_at_start": 4.79,
+          "other_programs_cpu_percent": 9.8
+        },
+        {
+          "run": 3,
+          "mode": "external_batch",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 5.1,
+          "available_gb_at_start": 4.81,
+          "other_programs_cpu_percent": 14.6
+        },
+        {
+          "run": 3,
+          "mode": "in_database",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 14.55,
+          "available_gb_at_start": 4.75,
+          "other_programs_cpu_percent": 13.2
+        },
+        {
+          "run": 3,
+          "mode": "application",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 1.05,
+          "available_gb_at_start": 4.77,
+          "other_programs_cpu_percent": 12.9
+        }
+      ]
+    },
+    {
+      "one_way_ms": 5,
+      "measured_round_trip_ms": {
+        "median_ms": 12.388650000502821,
+        "p95_ms": 13.781600002403138
+      },
+      "lookups": 0,
+      "architectures": {
+        "external_batch": {
+          "connections": 4.0,
+          "duration_s": 29.815521478652954,
+          "achieved_rate_per_s": 5.030936658525179,
+          "final_backlog_ms": 15.521526336669922,
+          "max_batch_rows": 50.0,
+          "max_batch_seconds": 0.290594099998998,
+          "ingest_latency_ms": {
+            "mean": 15.950204531351725,
+            "p50": 15.022754669189453,
+            "p95": 17.958378791809075,
+            "p99": 31.506135463714436,
+            "max": 81.23922348022461
+          },
+          "decision_latency_ms": {
+            "mean": 5068.961394627889,
+            "p50": 5038.931727409363,
+            "p95": 9537.071621418,
+            "p99": 9936.555321216583,
+            "max": 9947.88908958435
+          },
+          "cold_start_s": 8.568059499997617,
+          "cpu_s_per_1000_txn": {
+            "application": 4.270833333333334,
+            "database": 2.7083333333333335,
+            "total": 6.979166666666667
+          },
+          "peak_memory_mb": {
+            "application": 191.72265625,
+            "database": 73.11328125
+          },
+          "max_score_difference": 0.0
+        },
+        "in_database": {
+          "connections": 4.0,
+          "duration_s": 29.872981071472168,
+          "achieved_rate_per_s": 5.021259834802549,
+          "final_backlog_ms": 72.98111915588379,
+          "ingest_latency_ms": {
+            "mean": 67.0783519744873,
+            "p50": 64.95535373687744,
+            "p95": 81.48648738861083,
+            "p99": 95.91688871383664,
+            "max": 114.63761329650879
+          },
+          "decision_latency_ms": {
+            "mean": 67.0783519744873,
+            "p50": 64.95535373687744,
+            "p95": 81.48648738861083,
+            "p99": 95.91688871383664,
+            "max": 114.63761329650879
+          },
+          "cold_start_s": 8.423843699998542,
+          "cpu_s_per_1000_txn": {
+            "application": 0.3125,
+            "database": 51.97916666666667,
+            "total": 54.0625
+          },
+          "peak_memory_mb": {
+            "application": 162.66796875,
+            "database": 805.59375
+          },
+          "max_score_difference": 0.0
+        },
+        "application": {
+          "connections": 4.0,
+          "duration_s": 29.87882351875305,
+          "achieved_rate_per_s": 5.02027798737974,
+          "final_backlog_ms": 78.82356643676758,
+          "ingest_latency_ms": {
+            "mean": 70.71760336558025,
+            "p50": 66.58565998077393,
+            "p95": 101.700210571289,
+            "p99": 123.59122037887565,
+            "max": 130.12027740478516
+          },
+          "decision_latency_ms": {
+            "mean": 70.71760336558025,
+            "p50": 66.58565998077393,
+            "p95": 101.700210571289,
+            "p99": 123.59122037887565,
+            "max": 130.12027740478516
+          },
+          "cold_start_s": 7.8353630999990855,
+          "cpu_s_per_1000_txn": {
+            "application": 53.22916666666667,
+            "database": 1.9791666666666667,
+            "total": 55.3125
+          },
+          "peak_memory_mb": {
+            "application": 776.34765625,
+            "database": 72.78125
+          },
+          "max_score_difference": 0.0
+        }
+      },
+      "individual_runs": {
+        "external_batch": [
+          {
+            "connections": 4,
+            "duration_s": 29.815521478652954,
+            "achieved_rate_per_s": 5.030936658525179,
+            "final_backlog_ms": 15.521526336669922,
+            "max_batch_rows": 50,
+            "max_batch_seconds": 0.39553860000160057,
+            "ingest_latency_ms": {
+              "mean": 20.90124448140462,
+              "p50": 16.005277633666992,
+              "p95": 52.93221473693845,
+              "p99": 79.68798160552976,
+              "max": 86.94887161254883
+            },
+            "decision_latency_ms": {
+              "mean": 5068.961394627889,
+              "p50": 5033.53226184845,
+              "p95": 9529.485654830933,
+              "p99": 9928.738679885864,
+              "max": 9947.850942611694
+            },
+            "cold_start_s": 8.568059499997617,
+            "cpu_s_per_1000_txn": {
+              "application": 4.270833333333334,
+              "database": 2.7083333333333335,
+              "total": 6.979166666666667
+            },
+            "peak_memory_mb": {
+              "application": 191.9296875,
+              "database": 73.328125
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.814720630645752,
+            "achieved_rate_per_s": 5.031071793636698,
+            "final_backlog_ms": 14.720678329467773,
+            "max_batch_rows": 50,
+            "max_batch_seconds": 0.2688318000000436,
+            "ingest_latency_ms": {
+              "mean": 15.59741497039795,
+              "p50": 14.941215515136719,
+              "p95": 17.22358465194702,
+              "p99": 27.97255039215077,
+              "max": 59.65399742126465
+            },
+            "decision_latency_ms": {
+              "mean": 5112.0381387074785,
+              "p50": 5089.132070541382,
+              "p95": 9583.08391571045,
+              "p99": 9982.871494293213,
+              "max": 9998.10242652893
+            },
+            "cold_start_s": 8.883264700001746,
+            "cpu_s_per_1000_txn": {
+              "application": 3.4375,
+              "database": 0.625,
+              "total": 4.0625
+            },
+            "peak_memory_mb": {
+              "application": 191.72265625,
+              "database": 72.86328125
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.816113233566284,
+            "achieved_rate_per_s": 5.030836810450984,
+            "final_backlog_ms": 16.11328125,
+            "max_batch_rows": 50,
+            "max_batch_seconds": 0.290594099998998,
+            "ingest_latency_ms": {
+              "mean": 15.950204531351725,
+              "p50": 15.022754669189453,
+              "p95": 17.958378791809075,
+              "p99": 31.506135463714436,
+              "max": 81.23922348022461
+            },
+            "decision_latency_ms": {
+              "mean": 5066.230608622233,
+              "p50": 5038.931727409363,
+              "p95": 9537.071621418,
+              "p99": 9936.555321216583,
+              "max": 9947.88908958435
+            },
+            "cold_start_s": 7.833996100001968,
+            "cpu_s_per_1000_txn": {
+              "application": 6.354166666666667,
+              "database": 3.0208333333333335,
+              "total": 9.375
+            },
+            "peak_memory_mb": {
+              "application": 191.3203125,
+              "database": 73.11328125
+            },
+            "max_score_difference": 0.0
+          }
+        ],
+        "in_database": [
+          {
+            "connections": 4,
+            "duration_s": 29.872981071472168,
+            "achieved_rate_per_s": 5.021259834802549,
+            "final_backlog_ms": 72.98111915588379,
+            "ingest_latency_ms": {
+              "mean": 72.01225757598877,
+              "p50": 69.14365291595459,
+              "p95": 91.65798425674438,
+              "p99": 102.75313854217526,
+              "max": 114.63761329650879
+            },
+            "decision_latency_ms": {
+              "mean": 72.01225757598877,
+              "p50": 69.14365291595459,
+              "p95": 91.65798425674438,
+              "p99": 102.75313854217526,
+              "max": 114.63761329650879
+            },
+            "cold_start_s": 7.742824100001599,
+            "cpu_s_per_1000_txn": {
+              "application": 0.3125,
+              "database": 57.1875,
+              "total": 57.5
+            },
+            "peak_memory_mb": {
+              "application": 162.66796875,
+              "database": 805.59375
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.885972023010254,
+            "achieved_rate_per_s": 5.01907717388311,
+            "final_backlog_ms": 85.97207069396973,
+            "ingest_latency_ms": {
+              "mean": 66.19136174519856,
+              "p50": 64.95535373687744,
+              "p95": 78.73748540878296,
+              "p99": 88.55118989944454,
+              "max": 92.99182891845703
+            },
+            "decision_latency_ms": {
+              "mean": 66.19136174519856,
+              "p50": 64.95535373687744,
+              "p95": 78.73748540878296,
+              "p99": 88.55118989944454,
+              "max": 92.99182891845703
+            },
+            "cold_start_s": 8.759709000001749,
+            "cpu_s_per_1000_txn": {
+              "application": 0.20833333333333334,
+              "database": 51.35416666666667,
+              "total": 51.5625
+            },
+            "peak_memory_mb": {
+              "application": 163.17578125,
+              "database": 804.7578125
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.859435319900513,
+            "achieved_rate_per_s": 5.023537732477782,
+            "final_backlog_ms": 59.435367584228516,
+            "ingest_latency_ms": {
+              "mean": 67.0783519744873,
+              "p50": 64.5073652267456,
+              "p95": 81.48648738861083,
+              "p99": 95.91688871383664,
+              "max": 131.77084922790527
+            },
+            "decision_latency_ms": {
+              "mean": 67.0783519744873,
+              "p50": 64.5073652267456,
+              "p95": 81.48648738861083,
+              "p99": 95.91688871383664,
+              "max": 131.77084922790527
+            },
+            "cold_start_s": 8.423843699998542,
+            "cpu_s_per_1000_txn": {
+              "application": 2.0833333333333335,
+              "database": 51.97916666666667,
+              "total": 54.0625
+            },
+            "peak_memory_mb": {
+              "application": 162.35546875,
+              "database": 805.8046875
+            },
+            "max_score_difference": 0.0
+          }
+        ],
+        "application": [
+          {
+            "connections": 4,
+            "duration_s": 29.87760877609253,
+            "achieved_rate_per_s": 5.020482098287164,
+            "final_backlog_ms": 77.60882377624512,
+            "ingest_latency_ms": {
+              "mean": 74.96441682179768,
+              "p50": 69.01681423187256,
+              "p95": 115.75590372085566,
+              "p99": 146.0579252243042,
+              "max": 160.7072353363037
+            },
+            "decision_latency_ms": {
+              "mean": 74.96441682179768,
+              "p50": 69.01681423187256,
+              "p95": 115.75590372085566,
+              "p99": 146.0579252243042,
+              "max": 160.7072353363037
+            },
+            "cold_start_s": 7.415886999999202,
+            "cpu_s_per_1000_txn": {
+              "application": 56.25,
+              "database": 1.9791666666666667,
+              "total": 58.22916666666667
+            },
+            "peak_memory_mb": {
+              "application": 777.56640625,
+              "database": 72.91796875
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.903010368347168,
+            "achieved_rate_per_s": 5.016217369164193,
+            "final_backlog_ms": 103.01041603088379,
+            "ingest_latency_ms": {
+              "mean": 70.71760336558025,
+              "p50": 66.58565998077393,
+              "p95": 101.700210571289,
+              "p99": 123.59122037887565,
+              "max": 130.12027740478516
+            },
+            "decision_latency_ms": {
+              "mean": 70.71760336558025,
+              "p50": 66.58565998077393,
+              "p95": 101.700210571289,
+              "p99": 123.59122037887565,
+              "max": 130.12027740478516
+            },
+            "cold_start_s": 7.8353630999990855,
+            "cpu_s_per_1000_txn": {
+              "application": 53.22916666666667,
+              "database": 2.0833333333333335,
+              "total": 55.3125
+            },
+            "peak_memory_mb": {
+              "application": 776.34765625,
+              "database": 72.78125
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.87882351875305,
+            "achieved_rate_per_s": 5.02027798737974,
+            "final_backlog_ms": 78.82356643676758,
+            "ingest_latency_ms": {
+              "mean": 67.43892192840576,
+              "p50": 65.76144695281982,
+              "p95": 82.8439474105835,
+              "p99": 86.44155502319335,
+              "max": 92.86189079284668
+            },
+            "decision_latency_ms": {
+              "mean": 67.43892192840576,
+              "p50": 65.76144695281982,
+              "p95": 82.8439474105835,
+              "p99": 86.44155502319335,
+              "max": 92.86189079284668
+            },
+            "cold_start_s": 8.466261800000211,
+            "cpu_s_per_1000_txn": {
+              "application": 52.91666666666667,
+              "database": 1.1458333333333335,
+              "total": 54.0625
+            },
+            "peak_memory_mb": {
+              "application": 776.16015625,
+              "database": 72.54296875
+            },
+            "max_score_difference": 0.0
+          }
+        ]
+      },
+      "run_conditions": [
+        {
+          "run": 1,
+          "mode": "external_batch",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 6.1499999999999995,
+          "available_gb_at_start": 4.81,
+          "other_programs_cpu_percent": 31.8
+        },
+        {
+          "run": 1,
+          "mode": "in_database",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 6.5,
+          "available_gb_at_start": 4.58,
+          "other_programs_cpu_percent": 14.5
+        },
+        {
+          "run": 1,
+          "mode": "application",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 12.1,
+          "available_gb_at_start": 4.61,
+          "other_programs_cpu_percent": 11.9
+        },
+        {
+          "run": 2,
+          "mode": "external_batch",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 16.1,
+          "available_gb_at_start": 4.61,
+          "other_programs_cpu_percent": 11.7
+        },
+        {
+          "run": 2,
+          "mode": "in_database",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 10.25,
+          "available_gb_at_start": 4.65,
+          "other_programs_cpu_percent": 12.9
+        },
+        {
+          "run": 2,
+          "mode": "application",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 3.45,
+          "available_gb_at_start": 4.68,
+          "other_programs_cpu_percent": 13.4
+        },
+        {
+          "run": 3,
+          "mode": "external_batch",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 8.55,
+          "available_gb_at_start": 4.66,
+          "other_programs_cpu_percent": 11.1
+        },
+        {
+          "run": 3,
+          "mode": "in_database",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 0.8500000000000001,
+          "available_gb_at_start": 4.7,
+          "other_programs_cpu_percent": 13.4
+        },
+        {
+          "run": 3,
+          "mode": "application",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 18.9,
+          "available_gb_at_start": 4.66,
+          "other_programs_cpu_percent": 13.4
+        }
+      ]
+    },
+    {
+      "one_way_ms": 5,
+      "measured_round_trip_ms": {
+        "median_ms": 12.388650000502821,
+        "p95_ms": 13.781600002403138
+      },
+      "lookups": 3,
+      "architectures": {
+        "external_batch": {
+          "connections": 4.0,
+          "duration_s": 29.818264484405518,
+          "achieved_rate_per_s": 5.030473858679724,
+          "final_backlog_ms": 18.2645320892334,
+          "max_batch_rows": 50.0,
+          "max_batch_seconds": 0.3303794999992533,
+          "ingest_latency_ms": {
+            "mean": 19.647269248962402,
+            "p50": 16.15297794342041,
+            "p95": 43.21172237396239,
+            "p99": 69.6018409729003,
+            "max": 78.20439338684082
+          },
+          "decision_latency_ms": {
+            "mean": 5168.162562052409,
+            "p50": 5151.650905609131,
+            "p95": 9633.978521823883,
+            "p99": 10033.24497461319,
+            "max": 10085.60585975647
+          },
+          "cold_start_s": 10.05840029999672,
+          "cpu_s_per_1000_txn": {
+            "application": 4.0625,
+            "database": 1.0416666666666667,
+            "total": 5.104166666666667
+          },
+          "peak_memory_mb": {
+            "application": 192.01953125,
+            "database": 73.32421875
+          },
+          "max_score_difference": 0.0
+        },
+        "in_database": {
+          "connections": 4.0,
+          "duration_s": 29.878074645996094,
+          "achieved_rate_per_s": 5.020403817088034,
+          "final_backlog_ms": 78.07469367980957,
+          "ingest_latency_ms": {
+            "mean": 75.60436566670735,
+            "p50": 71.61831855773926,
+            "p95": 96.59699201583855,
+            "p99": 132.47029542922957,
+            "max": 143.94354820251465
+          },
+          "decision_latency_ms": {
+            "mean": 75.60436566670735,
+            "p50": 71.61831855773926,
+            "p95": 96.59699201583855,
+            "p99": 132.47029542922957,
+            "max": 143.94354820251465
+          },
+          "cold_start_s": 9.09365180000168,
+          "cpu_s_per_1000_txn": {
+            "application": 2.604166666666667,
+            "database": 58.22916666666667,
+            "total": 60.833333333333336
+          },
+          "peak_memory_mb": {
+            "application": 162.6015625,
+            "database": 805.50390625
+          },
+          "max_score_difference": 0.0
+        },
+        "application": {
+          "connections": 4.0,
+          "duration_s": 29.93666648864746,
+          "achieved_rate_per_s": 5.010577916445132,
+          "final_backlog_ms": 136.66653633117676,
+          "ingest_latency_ms": {
+            "mean": 122.66165892283122,
+            "p50": 120.39339542388916,
+            "p95": 144.2720293998718,
+            "p99": 162.11615085601804,
+            "max": 170.0427532196045
+          },
+          "decision_latency_ms": {
+            "mean": 122.66165892283122,
+            "p50": 120.39339542388916,
+            "p95": 144.2720293998718,
+            "p99": 162.11615085601804,
+            "max": 170.0427532196045
+          },
+          "cold_start_s": 8.80227129999912,
+          "cpu_s_per_1000_txn": {
+            "application": 66.04166666666667,
+            "database": 3.125,
+            "total": 68.54166666666667
+          },
+          "peak_memory_mb": {
+            "application": 776.3671875,
+            "database": 75.6171875
+          },
+          "max_score_difference": 0.0
+        }
+      },
+      "individual_runs": {
+        "external_batch": [
+          {
+            "connections": 4,
+            "duration_s": 29.816688060760498,
+            "achieved_rate_per_s": 5.030739822421919,
+            "final_backlog_ms": 16.688108444213867,
+            "max_batch_rows": 50,
+            "max_batch_seconds": 0.2897800999999163,
+            "ingest_latency_ms": {
+              "mean": 16.283189455668133,
+              "p50": 15.226125717163086,
+              "p95": 19.21268701553344,
+              "p99": 41.92438364028928,
+              "max": 69.95987892150879
+            },
+            "decision_latency_ms": {
+              "mean": 5168.162562052409,
+              "p50": 5151.650905609131,
+              "p95": 9623.977184295654,
+              "p99": 10023.520231246948,
+              "max": 10085.60585975647
+            },
+            "cold_start_s": 7.996465399999579,
+            "cpu_s_per_1000_txn": {
+              "application": 3.3333333333333335,
+              "database": 1.0416666666666667,
+              "total": 4.375
+            },
+            "peak_memory_mb": {
+              "application": 192.44921875,
+              "database": 73.86328125
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.818264484405518,
+            "achieved_rate_per_s": 5.030473858679724,
+            "final_backlog_ms": 18.2645320892334,
+            "max_batch_rows": 50,
+            "max_batch_seconds": 0.36784070000067004,
+            "ingest_latency_ms": {
+              "mean": 19.647269248962402,
+              "p50": 16.15297794342041,
+              "p95": 43.21172237396239,
+              "p99": 77.98098564147945,
+              "max": 80.06501197814941
+            },
+            "decision_latency_ms": {
+              "mean": 5161.250279744466,
+              "p50": 5135.619640350342,
+              "p95": 9633.978521823883,
+              "p99": 10033.24497461319,
+              "max": 10047.345161437988
+            },
+            "cold_start_s": 10.494710400002077,
+            "cpu_s_per_1000_txn": {
+              "application": 4.0625,
+              "database": 1.0416666666666667,
+              "total": 5.104166666666667
+            },
+            "peak_memory_mb": {
+              "application": 191.89453125,
+              "database": 73.32421875
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.819196939468384,
+            "achieved_rate_per_s": 5.0303165542819,
+            "final_backlog_ms": 19.19698715209961,
+            "max_batch_rows": 50,
+            "max_batch_seconds": 0.3303794999992533,
+            "ingest_latency_ms": {
+              "mean": 20.359649658203125,
+              "p50": 16.369938850402832,
+              "p95": 45.112359523773186,
+              "p99": 69.6018409729003,
+              "max": 78.20439338684082
+            },
+            "decision_latency_ms": {
+              "mean": 5223.850606282552,
+              "p50": 5205.644726753235,
+              "p95": 9672.747099399567,
+              "p99": 10070.880978107452,
+              "max": 10164.20292854309
+            },
+            "cold_start_s": 10.05840029999672,
+            "cpu_s_per_1000_txn": {
+              "application": 7.395833333333334,
+              "database": 1.5625,
+              "total": 8.958333333333334
+            },
+            "peak_memory_mb": {
+              "application": 192.01953125,
+              "database": 73.12890625
+            },
+            "max_score_difference": 0.0
+          }
+        ],
+        "in_database": [
+          {
+            "connections": 4,
+            "duration_s": 29.864004373550415,
+            "achieved_rate_per_s": 5.022769154589669,
+            "final_backlog_ms": 64.00442123413086,
+            "ingest_latency_ms": {
+              "mean": 75.60436566670735,
+              "p50": 71.61831855773926,
+              "p95": 96.59699201583855,
+              "p99": 132.47029542922957,
+              "max": 153.20467948913574
+            },
+            "decision_latency_ms": {
+              "mean": 75.60436566670735,
+              "p50": 71.61831855773926,
+              "p95": 96.59699201583855,
+              "p99": 132.47029542922957,
+              "max": 153.20467948913574
+            },
+            "cold_start_s": 8.921515199999703,
+            "cpu_s_per_1000_txn": {
+              "application": 2.604166666666667,
+              "database": 58.22916666666667,
+              "total": 60.833333333333336
+            },
+            "peak_memory_mb": {
+              "application": 162.52734375,
+              "database": 805.50390625
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.88361167907715,
+            "achieved_rate_per_s": 5.019473603487549,
+            "final_backlog_ms": 83.61172676086426,
+            "ingest_latency_ms": {
+              "mean": 84.41398938496907,
+              "p50": 82.37266540527344,
+              "p95": 109.10750627517696,
+              "p99": 132.5809741020201,
+              "max": 143.94354820251465
+            },
+            "decision_latency_ms": {
+              "mean": 84.41398938496907,
+              "p50": 82.37266540527344,
+              "p95": 109.10750627517696,
+              "p99": 132.5809741020201,
+              "max": 143.94354820251465
+            },
+            "cold_start_s": 10.497497000000294,
+            "cpu_s_per_1000_txn": {
+              "application": 3.4375,
+              "database": 65.83333333333334,
+              "total": 69.27083333333334
+            },
+            "peak_memory_mb": {
+              "application": 162.9140625,
+              "database": 806.0234375
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.878074645996094,
+            "achieved_rate_per_s": 5.020403817088034,
+            "final_backlog_ms": 78.07469367980957,
+            "ingest_latency_ms": {
+              "mean": 69.02355670928955,
+              "p50": 66.85471534729004,
+              "p95": 81.8624496459961,
+              "p99": 88.05101871490479,
+              "max": 89.77723121643066
+            },
+            "decision_latency_ms": {
+              "mean": 69.02355670928955,
+              "p50": 66.85471534729004,
+              "p95": 81.8624496459961,
+              "p99": 88.05101871490479,
+              "max": 89.77723121643066
+            },
+            "cold_start_s": 9.09365180000168,
+            "cpu_s_per_1000_txn": {
+              "application": 0.3125,
+              "database": 53.958333333333336,
+              "total": 54.270833333333336
+            },
+            "peak_memory_mb": {
+              "application": 162.6015625,
+              "database": 804.0078125
+            },
+            "max_score_difference": 0.0
+          }
+        ],
+        "application": [
+          {
+            "connections": 4,
+            "duration_s": 29.949016571044922,
+            "achieved_rate_per_s": 5.008511703353286,
+            "final_backlog_ms": 149.0166187286377,
+            "ingest_latency_ms": {
+              "mean": 122.66165892283122,
+              "p50": 120.39339542388916,
+              "p95": 148.6768364906311,
+              "p99": 162.11615085601804,
+              "max": 170.0427532196045
+            },
+            "decision_latency_ms": {
+              "mean": 122.66165892283122,
+              "p50": 120.39339542388916,
+              "p95": 148.6768364906311,
+              "p99": 162.11615085601804,
+              "max": 170.0427532196045
+            },
+            "cold_start_s": 7.177272600001743,
+            "cpu_s_per_1000_txn": {
+              "application": 66.04166666666667,
+              "database": 2.5,
+              "total": 68.54166666666667
+            },
+            "peak_memory_mb": {
+              "application": 776.3671875,
+              "database": 75.6171875
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.93666648864746,
+            "achieved_rate_per_s": 5.010577916445132,
+            "final_backlog_ms": 136.66653633117676,
+            "ingest_latency_ms": {
+              "mean": 125.50678730010986,
+              "p50": 124.05729293823242,
+              "p95": 144.2720293998718,
+              "p99": 176.51225566864005,
+              "max": 191.96844100952148
+            },
+            "decision_latency_ms": {
+              "mean": 125.50678730010986,
+              "p50": 124.05729293823242,
+              "p95": 144.2720293998718,
+              "p99": 176.51225566864005,
+              "max": 191.96844100952148
+            },
+            "cold_start_s": 10.125395700000809,
+            "cpu_s_per_1000_txn": {
+              "application": 68.02083333333334,
+              "database": 3.125,
+              "total": 71.14583333333334
+            },
+            "peak_memory_mb": {
+              "application": 776.19921875,
+              "database": 75.57421875
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.935733318328857,
+            "achieved_rate_per_s": 5.010734108462911,
+            "final_backlog_ms": 135.73336601257324,
+            "ingest_latency_ms": {
+              "mean": 107.82742818196614,
+              "p50": 104.58695888519287,
+              "p95": 125.1697778701782,
+              "p99": 136.92096948623654,
+              "max": 142.62723922729492
+            },
+            "decision_latency_ms": {
+              "mean": 107.82742818196614,
+              "p50": 104.58695888519287,
+              "p95": 125.1697778701782,
+              "p99": 136.92096948623654,
+              "max": 142.62723922729492
+            },
+            "cold_start_s": 8.80227129999912,
+            "cpu_s_per_1000_txn": {
+              "application": 53.125,
+              "database": 3.75,
+              "total": 56.875
+            },
+            "peak_memory_mb": {
+              "application": 777.71484375,
+              "database": 75.890625
+            },
+            "max_score_difference": 0.0
+          }
+        ]
+      },
+      "run_conditions": [
+        {
+          "run": 1,
+          "mode": "external_batch",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 14.75,
+          "available_gb_at_start": 4.7,
+          "other_programs_cpu_percent": 12.1
+        },
+        {
+          "run": 1,
+          "mode": "in_database",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 9.95,
+          "available_gb_at_start": 4.71,
+          "other_programs_cpu_percent": 14.7
+        },
+        {
+          "run": 1,
+          "mode": "application",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 16.8,
+          "available_gb_at_start": 4.61,
+          "other_programs_cpu_percent": 18.6
+        },
+        {
+          "run": 2,
+          "mode": "external_batch",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 16.5,
+          "available_gb_at_start": 4.53,
+          "other_programs_cpu_percent": 21.2
+        },
+        {
+          "run": 2,
+          "mode": "in_database",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 13.75,
+          "available_gb_at_start": 4.58,
+          "other_programs_cpu_percent": 25.1
+        },
+        {
+          "run": 2,
+          "mode": "application",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 19.2,
+          "available_gb_at_start": 4.54,
+          "other_programs_cpu_percent": 22.1
+        },
+        {
+          "run": 3,
+          "mode": "external_batch",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 19.15,
+          "available_gb_at_start": 4.58,
+          "other_programs_cpu_percent": 25.6
+        },
+        {
+          "run": 3,
+          "mode": "in_database",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 14.65,
+          "available_gb_at_start": 4.61,
+          "other_programs_cpu_percent": 13.4
+        },
+        {
+          "run": 3,
+          "mode": "application",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 9.450000000000001,
+          "available_gb_at_start": 4.64,
+          "other_programs_cpu_percent": 14.1
+        }
+      ]
+    },
+    {
+      "one_way_ms": 25,
+      "measured_round_trip_ms": {
+        "median_ms": 52.71299999913026,
+        "p95_ms": 54.67379999754485
+      },
+      "lookups": 0,
+      "architectures": {
+        "external_batch": {
+          "connections": 4.0,
+          "duration_s": 29.855034351348877,
+          "achieved_rate_per_s": 5.024278258558522,
+          "final_backlog_ms": 55.03439903259277,
+          "max_batch_rows": 50.0,
+          "max_batch_seconds": 0.4522312000008242,
+          "ingest_latency_ms": {
+            "mean": 56.0509459177653,
+            "p50": 54.97407913208008,
+            "p95": 58.22153091430662,
+            "p99": 79.92230892181396,
+            "max": 101.81140899658203
+          },
+          "decision_latency_ms": {
+            "mean": 5209.075101216634,
+            "p50": 5218.998908996582,
+            "p95": 9672.688889503479,
+            "p99": 10072.534499168396,
+            "max": 10174.35622215271
+          },
+          "cold_start_s": 8.597365499997977,
+          "cpu_s_per_1000_txn": {
+            "application": 3.75,
+            "database": 1.4583333333333335,
+            "total": 5.729166666666667
+          },
+          "peak_memory_mb": {
+            "application": 191.3984375,
+            "database": 73.0703125
+          },
+          "max_score_difference": 0.0
+        },
+        "in_database": {
+          "connections": 4.0,
+          "duration_s": 29.907662630081177,
+          "achieved_rate_per_s": 5.015437075618532,
+          "final_backlog_ms": 107.66267776489258,
+          "ingest_latency_ms": {
+            "mean": 111.91611289978027,
+            "p50": 109.68220233917236,
+            "p95": 129.78941202163693,
+            "p99": 153.98350715637193,
+            "max": 175.3520965576172
+          },
+          "decision_latency_ms": {
+            "mean": 111.91611289978027,
+            "p50": 109.68220233917236,
+            "p95": 129.78941202163693,
+            "p99": 153.98350715637193,
+            "max": 175.3520965576172
+          },
+          "cold_start_s": 9.766328900001099,
+          "cpu_s_per_1000_txn": {
+            "application": 0.5208333333333334,
+            "database": 57.8125,
+            "total": 58.333333333333336
+          },
+          "peak_memory_mb": {
+            "application": 162.83203125,
+            "database": 804.6015625
+          },
+          "max_score_difference": 0.0
+        },
+        "application": {
+          "connections": 4.0,
+          "duration_s": 29.934011220932007,
+          "achieved_rate_per_s": 5.011022374946838,
+          "final_backlog_ms": 134.01126861572266,
+          "ingest_latency_ms": {
+            "mean": 113.19212436676025,
+            "p50": 108.06107521057129,
+            "p95": 137.45348453521729,
+            "p99": 168.5033440589904,
+            "max": 182.90448188781738
+          },
+          "decision_latency_ms": {
+            "mean": 113.19212436676025,
+            "p50": 108.06107521057129,
+            "p95": 137.45348453521729,
+            "p99": 168.5033440589904,
+            "max": 182.90448188781738
+          },
+          "cold_start_s": 7.565164700001333,
+          "cpu_s_per_1000_txn": {
+            "application": 55.625,
+            "database": 1.7708333333333335,
+            "total": 57.395833333333336
+          },
+          "peak_memory_mb": {
+            "application": 776.953125,
+            "database": 72.8828125
+          },
+          "max_score_difference": 0.0
+        }
+      },
+      "individual_runs": {
+        "external_batch": [
+          {
+            "connections": 4,
+            "duration_s": 29.855034351348877,
+            "achieved_rate_per_s": 5.024278258558522,
+            "final_backlog_ms": 55.03439903259277,
+            "max_batch_rows": 50,
+            "max_batch_seconds": 0.4502706000021135,
+            "ingest_latency_ms": {
+              "mean": 56.0509459177653,
+              "p50": 54.97407913208008,
+              "p95": 58.22153091430662,
+              "p99": 86.46418571472154,
+              "max": 101.81140899658203
+            },
+            "decision_latency_ms": {
+              "mean": 5209.075101216634,
+              "p50": 5218.998908996582,
+              "p95": 9664.252126216888,
+              "p99": 10064.207808971405,
+              "max": 10174.35622215271
+            },
+            "cold_start_s": 10.477177400000073,
+            "cpu_s_per_1000_txn": {
+              "application": 3.75,
+              "database": 1.1458333333333335,
+              "total": 4.895833333333334
+            },
+            "peak_memory_mb": {
+              "application": 191.37109375,
+              "database": 72.921875
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.854082822799683,
+            "achieved_rate_per_s": 5.024438395590046,
+            "final_backlog_ms": 54.08287048339844,
+            "max_batch_rows": 50,
+            "max_batch_seconds": 0.4522312000008242,
+            "ingest_latency_ms": {
+              "mean": 56.79745356241862,
+              "p50": 55.403709411621094,
+              "p95": 63.389861583709695,
+              "p99": 79.92230892181396,
+              "max": 112.95723915100098
+            },
+            "decision_latency_ms": {
+              "mean": 5204.801390965779,
+              "p50": 5180.824398994446,
+              "p95": 9672.688889503479,
+              "p99": 10072.534499168396,
+              "max": 10091.080904006958
+            },
+            "cold_start_s": 8.597365499997977,
+            "cpu_s_per_1000_txn": {
+              "application": 3.0208333333333335,
+              "database": 2.8125,
+              "total": 5.833333333333334
+            },
+            "peak_memory_mb": {
+              "application": 191.78515625,
+              "database": 73.09375
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.855477333068848,
+            "achieved_rate_per_s": 5.024203710648946,
+            "final_backlog_ms": 55.47738075256348,
+            "max_batch_rows": 50,
+            "max_batch_seconds": 0.48026219999883324,
+            "ingest_latency_ms": {
+              "mean": 55.5372953414917,
+              "p50": 54.786086082458496,
+              "p95": 57.99260139465331,
+              "p99": 67.31283426284783,
+              "max": 82.67664909362793
+            },
+            "decision_latency_ms": {
+              "mean": 5333.366231918335,
+              "p50": 5298.069596290588,
+              "p95": 9794.790887832642,
+              "p99": 10194.085531234741,
+              "max": 10211.048126220703
+            },
+            "cold_start_s": 8.057583600002545,
+            "cpu_s_per_1000_txn": {
+              "application": 4.270833333333334,
+              "database": 1.4583333333333335,
+              "total": 5.729166666666667
+            },
+            "peak_memory_mb": {
+              "application": 191.3984375,
+              "database": 73.0703125
+            },
+            "max_score_difference": 0.0
+          }
+        ],
+        "in_database": [
+          {
+            "connections": 4,
+            "duration_s": 29.92608642578125,
+            "achieved_rate_per_s": 5.012349355202535,
+            "final_backlog_ms": 126.08647346496582,
+            "ingest_latency_ms": {
+              "mean": 115.13918399810791,
+              "p50": 111.4647388458252,
+              "p95": 141.52624607086182,
+              "p99": 171.20056629180908,
+              "max": 197.52740859985352
+            },
+            "decision_latency_ms": {
+              "mean": 115.13918399810791,
+              "p50": 111.4647388458252,
+              "p95": 141.52624607086182,
+              "p99": 171.20056629180908,
+              "max": 197.52740859985352
+            },
+            "cold_start_s": 9.796225800000684,
+            "cpu_s_per_1000_txn": {
+              "application": 0.20833333333333334,
+              "database": 59.895833333333336,
+              "total": 60.10416666666667
+            },
+            "peak_memory_mb": {
+              "application": 162.83203125,
+              "database": 804.6015625
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.907662630081177,
+            "achieved_rate_per_s": 5.015437075618532,
+            "final_backlog_ms": 107.66267776489258,
+            "ingest_latency_ms": {
+              "mean": 106.34073575337727,
+              "p50": 104.92897033691406,
+              "p95": 121.94284200668329,
+              "p99": 135.60216188430775,
+              "max": 164.9010181427002
+            },
+            "decision_latency_ms": {
+              "mean": 106.34073575337727,
+              "p50": 104.92897033691406,
+              "p95": 121.94284200668329,
+              "p99": 135.60216188430775,
+              "max": 164.9010181427002
+            },
+            "cold_start_s": 8.769720200001757,
+            "cpu_s_per_1000_txn": {
+              "application": 3.4375,
+              "database": 51.145833333333336,
+              "total": 54.583333333333336
+            },
+            "peak_memory_mb": {
+              "application": 162.171875,
+              "database": 803.80859375
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.904728651046753,
+            "achieved_rate_per_s": 5.015929144528438,
+            "final_backlog_ms": 104.72869873046875,
+            "ingest_latency_ms": {
+              "mean": 111.91611289978027,
+              "p50": 109.68220233917236,
+              "p95": 129.78941202163693,
+              "p99": 153.98350715637193,
+              "max": 175.3520965576172
+            },
+            "decision_latency_ms": {
+              "mean": 111.91611289978027,
+              "p50": 109.68220233917236,
+              "p95": 129.78941202163693,
+              "p99": 153.98350715637193,
+              "max": 175.3520965576172
+            },
+            "cold_start_s": 9.766328900001099,
+            "cpu_s_per_1000_txn": {
+              "application": 0.5208333333333334,
+              "database": 57.8125,
+              "total": 58.333333333333336
+            },
+            "peak_memory_mb": {
+              "application": 163.03515625,
+              "database": 805.06640625
+            },
+            "max_score_difference": 0.0
+          }
+        ],
+        "application": [
+          {
+            "connections": 4,
+            "duration_s": 29.955416202545166,
+            "achieved_rate_per_s": 5.00744169220574,
+            "final_backlog_ms": 155.41625022888184,
+            "ingest_latency_ms": {
+              "mean": 157.137713432312,
+              "p50": 142.583966255188,
+              "p95": 253.75977754592893,
+              "p99": 322.8954052925102,
+              "max": 441.72191619873047
+            },
+            "decision_latency_ms": {
+              "mean": 157.137713432312,
+              "p50": 142.583966255188,
+              "p95": 253.75977754592893,
+              "p99": 322.8954052925102,
+              "max": 441.72191619873047
+            },
+            "cold_start_s": 8.993057600000611,
+            "cpu_s_per_1000_txn": {
+              "application": 83.95833333333334,
+              "database": 2.1875,
+              "total": 86.14583333333334
+            },
+            "peak_memory_mb": {
+              "application": 776.953125,
+              "database": 72.73046875
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.921377182006836,
+            "achieved_rate_per_s": 5.013138235167939,
+            "final_backlog_ms": 121.37722969055176,
+            "ingest_latency_ms": {
+              "mean": 113.19212436676025,
+              "p50": 108.06107521057129,
+              "p95": 137.45348453521729,
+              "p99": 168.5033440589904,
+              "max": 182.90448188781738
+            },
+            "decision_latency_ms": {
+              "mean": 113.19212436676025,
+              "p50": 108.06107521057129,
+              "p95": 137.45348453521729,
+              "p99": 168.5033440589904,
+              "max": 182.90448188781738
+            },
+            "cold_start_s": 7.565164700001333,
+            "cpu_s_per_1000_txn": {
+              "application": 55.625,
+              "database": 1.7708333333333335,
+              "total": 57.395833333333336
+            },
+            "peak_memory_mb": {
+              "application": 776.75,
+              "database": 72.8828125
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.934011220932007,
+            "achieved_rate_per_s": 5.011022374946838,
+            "final_backlog_ms": 134.01126861572266,
+            "ingest_latency_ms": {
+              "mean": 109.69865322113037,
+              "p50": 107.2767972946167,
+              "p95": 125.8404493331909,
+              "p99": 137.27759599685663,
+              "max": 142.1985626220703
+            },
+            "decision_latency_ms": {
+              "mean": 109.69865322113037,
+              "p50": 107.2767972946167,
+              "p95": 125.8404493331909,
+              "p99": 137.27759599685663,
+              "max": 142.1985626220703
+            },
+            "cold_start_s": 7.293373399999837,
+            "cpu_s_per_1000_txn": {
+              "application": 53.22916666666667,
+              "database": 1.0416666666666667,
+              "total": 54.270833333333336
+            },
+            "peak_memory_mb": {
+              "application": 777.60546875,
+              "database": 72.97265625
+            },
+            "max_score_difference": 0.0
+          }
+        ]
+      },
+      "run_conditions": [
+        {
+          "run": 1,
+          "mode": "external_batch",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 17.299999999999997,
+          "available_gb_at_start": 4.55,
+          "other_programs_cpu_percent": 21.5
+        },
+        {
+          "run": 1,
+          "mode": "in_database",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 8.9,
+          "available_gb_at_start": 4.42,
+          "other_programs_cpu_percent": 21.3
+        },
+        {
+          "run": 1,
+          "mode": "application",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 1.45,
+          "available_gb_at_start": 4.52,
+          "other_programs_cpu_percent": 28.5
+        },
+        {
+          "run": 2,
+          "mode": "external_batch",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 6.5,
+          "available_gb_at_start": 4.5,
+          "other_programs_cpu_percent": 14.5
+        },
+        {
+          "run": 2,
+          "mode": "in_database",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 2.05,
+          "available_gb_at_start": 4.57,
+          "other_programs_cpu_percent": 11.2
+        },
+        {
+          "run": 2,
+          "mode": "application",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 9.85,
+          "available_gb_at_start": 4.65,
+          "other_programs_cpu_percent": 11.2
+        },
+        {
+          "run": 3,
+          "mode": "external_batch",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 1.4500000000000002,
+          "available_gb_at_start": 4.62,
+          "other_programs_cpu_percent": 10.1
+        },
+        {
+          "run": 3,
+          "mode": "in_database",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 9.25,
+          "available_gb_at_start": 4.66,
+          "other_programs_cpu_percent": 17.4
+        },
+        {
+          "run": 3,
+          "mode": "application",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 14.6,
+          "available_gb_at_start": 4.66,
+          "other_programs_cpu_percent": 12.9
+        }
+      ]
+    },
+    {
+      "one_way_ms": 25,
+      "measured_round_trip_ms": {
+        "median_ms": 52.71299999913026,
+        "p95_ms": 54.67379999754485
+      },
+      "lookups": 3,
+      "architectures": {
+        "external_batch": {
+          "connections": 4.0,
+          "duration_s": 29.8563551902771,
+          "achieved_rate_per_s": 5.024055985535984,
+          "final_backlog_ms": 56.35523796081543,
+          "max_batch_rows": 50.0,
+          "max_batch_seconds": 0.4978808999985631,
+          "ingest_latency_ms": {
+            "mean": 55.94468275705973,
+            "p50": 55.05049228668213,
+            "p95": 59.35492515563964,
+            "p99": 73.10024023056027,
+            "max": 104.91561889648438
+          },
+          "decision_latency_ms": {
+            "mean": 5353.329733212789,
+            "p50": 5327.381730079651,
+            "p95": 9828.275215625763,
+            "p99": 10227.17371225357,
+            "max": 10241.6353225708
+          },
+          "cold_start_s": 8.450003199999628,
+          "cpu_s_per_1000_txn": {
+            "application": 3.541666666666667,
+            "database": 2.291666666666667,
+            "total": 5.9375
+          },
+          "peak_memory_mb": {
+            "application": 192.125,
+            "database": 73.1953125
+          },
+          "max_score_difference": 0.0
+        },
+        "in_database": {
+          "connections": 4.0,
+          "duration_s": 29.92198944091797,
+          "achieved_rate_per_s": 5.013035657143732,
+          "final_backlog_ms": 121.98948860168457,
+          "ingest_latency_ms": {
+            "mean": 108.8524580001831,
+            "p50": 105.8109998703003,
+            "p95": 120.59143781661987,
+            "p99": 153.73932600021328,
+            "max": 231.11605644226074
+          },
+          "decision_latency_ms": {
+            "mean": 108.8524580001831,
+            "p50": 105.8109998703003,
+            "p95": 120.59143781661987,
+            "p99": 153.73932600021328,
+            "max": 231.11605644226074
+          },
+          "cold_start_s": 8.613431699999637,
+          "cpu_s_per_1000_txn": {
+            "application": 0.4166666666666667,
+            "database": 54.0625,
+            "total": 54.375
+          },
+          "peak_memory_mb": {
+            "application": 162.76171875,
+            "database": 805.9375
+          },
+          "max_score_difference": 0.0
+        },
+        "application": {
+          "connections": 4.0,
+          "duration_s": 30.087175607681274,
+          "achieved_rate_per_s": 4.985512829649085,
+          "final_backlog_ms": 287.17565536499023,
+          "ingest_latency_ms": {
+            "mean": 268.64574273427326,
+            "p50": 266.89207553863525,
+            "p95": 282.5951576232909,
+            "p99": 293.80629539489746,
+            "max": 320.9700584411621
+          },
+          "decision_latency_ms": {
+            "mean": 268.64574273427326,
+            "p50": 266.89207553863525,
+            "p95": 282.5951576232909,
+            "p99": 293.80629539489746,
+            "max": 320.9700584411621
+          },
+          "cold_start_s": 7.977774399998452,
+          "cpu_s_per_1000_txn": {
+            "application": 57.083333333333336,
+            "database": 2.3958333333333335,
+            "total": 58.54166666666667
+          },
+          "peak_memory_mb": {
+            "application": 776.890625,
+            "database": 75.59375
+          },
+          "max_score_difference": 0.0
+        }
+      },
+      "individual_runs": {
+        "external_batch": [
+          {
+            "connections": 4,
+            "duration_s": 29.8563551902771,
+            "achieved_rate_per_s": 5.024055985535984,
+            "final_backlog_ms": 56.35523796081543,
+            "max_batch_rows": 50,
+            "max_batch_seconds": 0.8028567000001203,
+            "ingest_latency_ms": {
+              "mean": 59.818668365478516,
+              "p50": 56.197524070739746,
+              "p95": 79.75324392318706,
+              "p99": 116.65631294250477,
+              "max": 132.64799118041992
+            },
+            "decision_latency_ms": {
+              "mean": 5465.950918197632,
+              "p50": 5423.045039176941,
+              "p95": 9911.874592304228,
+              "p99": 10343.854453563688,
+              "max": 10641.854524612427
+            },
+            "cold_start_s": 8.377706899998884,
+            "cpu_s_per_1000_txn": {
+              "application": 5.208333333333334,
+              "database": 2.291666666666667,
+              "total": 7.5
+            },
+            "peak_memory_mb": {
+              "application": 192.125,
+              "database": 73.18359375
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.857232809066772,
+            "achieved_rate_per_s": 5.023908309227148,
+            "final_backlog_ms": 57.23285675048828,
+            "max_batch_rows": 50,
+            "max_batch_seconds": 0.4882830999995349,
+            "ingest_latency_ms": {
+              "mean": 55.94468275705973,
+              "p50": 55.05049228668213,
+              "p95": 59.35492515563964,
+              "p99": 73.10024023056027,
+              "max": 104.91561889648438
+            },
+            "decision_latency_ms": {
+              "mean": 5212.350508371989,
+              "p50": 5185.912609100342,
+              "p95": 9680.514645576477,
+              "p99": 10080.019536018372,
+              "max": 10098.119497299194
+            },
+            "cold_start_s": 9.411173899999994,
+            "cpu_s_per_1000_txn": {
+              "application": 3.125,
+              "database": 1.25,
+              "total": 4.375
+            },
+            "peak_memory_mb": {
+              "application": 192.22265625,
+              "database": 73.34765625
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.85511088371277,
+            "achieved_rate_per_s": 5.024265379025317,
+            "final_backlog_ms": 55.110931396484375,
+            "max_batch_rows": 50,
+            "max_batch_seconds": 0.4978808999985631,
+            "ingest_latency_ms": {
+              "mean": 55.39347012837728,
+              "p50": 54.78692054748535,
+              "p95": 58.69352817535396,
+              "p99": 63.03251266479492,
+              "max": 76.56073570251465
+            },
+            "decision_latency_ms": {
+              "mean": 5353.329733212789,
+              "p50": 5327.381730079651,
+              "p95": 9828.275215625763,
+              "p99": 10227.17371225357,
+              "max": 10241.6353225708
+            },
+            "cold_start_s": 8.450003199999628,
+            "cpu_s_per_1000_txn": {
+              "application": 3.541666666666667,
+              "database": 2.3958333333333335,
+              "total": 5.9375
+            },
+            "peak_memory_mb": {
+              "application": 191.73828125,
+              "database": 73.1953125
+            },
+            "max_score_difference": 0.0
+          }
+        ],
+        "in_database": [
+          {
+            "connections": 4,
+            "duration_s": 29.92198944091797,
+            "achieved_rate_per_s": 5.013035657143732,
+            "final_backlog_ms": 121.98948860168457,
+            "ingest_latency_ms": {
+              "mean": 108.8524580001831,
+              "p50": 106.11331462860107,
+              "p95": 120.02028226852416,
+              "p99": 144.34376955032332,
+              "max": 172.91522026062012
+            },
+            "decision_latency_ms": {
+              "mean": 108.8524580001831,
+              "p50": 106.11331462860107,
+              "p95": 120.02028226852416,
+              "p99": 144.34376955032332,
+              "max": 172.91522026062012
+            },
+            "cold_start_s": 8.846767099999852,
+            "cpu_s_per_1000_txn": {
+              "application": 0.3125,
+              "database": 54.0625,
+              "total": 54.375
+            },
+            "peak_memory_mb": {
+              "application": 162.91015625,
+              "database": 806.7890625
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.912678003311157,
+            "achieved_rate_per_s": 5.01459615161825,
+            "final_backlog_ms": 112.67805099487305,
+            "ingest_latency_ms": {
+              "mean": 106.54566764831543,
+              "p50": 104.28392887115479,
+              "p95": 120.59143781661987,
+              "p99": 153.73932600021328,
+              "max": 305.4978847503662
+            },
+            "decision_latency_ms": {
+              "mean": 106.54566764831543,
+              "p50": 104.28392887115479,
+              "p95": 120.59143781661987,
+              "p99": 153.73932600021328,
+              "max": 305.4978847503662
+            },
+            "cold_start_s": 8.428558100000373,
+            "cpu_s_per_1000_txn": {
+              "application": 1.25,
+              "database": 50.72916666666667,
+              "total": 51.97916666666667
+            },
+            "peak_memory_mb": {
+              "application": 162.39453125,
+              "database": 805.9375
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.930440664291382,
+            "achieved_rate_per_s": 5.011620165651554,
+            "final_backlog_ms": 130.44071197509766,
+            "ingest_latency_ms": {
+              "mean": 115.32782236735027,
+              "p50": 105.8109998703003,
+              "p95": 160.3000164031982,
+              "p99": 201.11881494522078,
+              "max": 231.11605644226074
+            },
+            "decision_latency_ms": {
+              "mean": 115.32782236735027,
+              "p50": 105.8109998703003,
+              "p95": 160.3000164031982,
+              "p99": 201.11881494522078,
+              "max": 231.11605644226074
+            },
+            "cold_start_s": 8.613431699999637,
+            "cpu_s_per_1000_txn": {
+              "application": 0.4166666666666667,
+              "database": 55.72916666666667,
+              "total": 56.145833333333336
+            },
+            "peak_memory_mb": {
+              "application": 162.76171875,
+              "database": 805.7265625
+            },
+            "max_score_difference": 0.0
+          }
+        ],
+        "application": [
+          {
+            "connections": 4,
+            "duration_s": 30.087419033050537,
+            "achieved_rate_per_s": 4.9854724938429404,
+            "final_backlog_ms": 287.41908073425293,
+            "ingest_latency_ms": {
+              "mean": 268.64574273427326,
+              "p50": 266.89207553863525,
+              "p95": 282.5951576232909,
+              "p99": 293.80629539489746,
+              "max": 318.96328926086426
+            },
+            "decision_latency_ms": {
+              "mean": 268.64574273427326,
+              "p50": 266.89207553863525,
+              "p95": 282.5951576232909,
+              "p99": 293.80629539489746,
+              "max": 318.96328926086426
+            },
+            "cold_start_s": 7.977774399998452,
+            "cpu_s_per_1000_txn": {
+              "application": 57.083333333333336,
+              "database": 1.4583333333333335,
+              "total": 58.54166666666667
+            },
+            "peak_memory_mb": {
+              "application": 776.890625,
+              "database": 75.6171875
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 30.087175607681274,
+            "achieved_rate_per_s": 4.985512829649085,
+            "final_backlog_ms": 287.17565536499023,
+            "ingest_latency_ms": {
+              "mean": 280.8843358357747,
+              "p50": 276.058554649353,
+              "p95": 316.8935179710388,
+              "p99": 352.5198864936828,
+              "max": 358.80351066589355
+            },
+            "decision_latency_ms": {
+              "mean": 280.8843358357747,
+              "p50": 276.058554649353,
+              "p95": 316.8935179710388,
+              "p99": 352.5198864936828,
+              "max": 358.80351066589355
+            },
+            "cold_start_s": 7.8303054999996675,
+            "cpu_s_per_1000_txn": {
+              "application": 65.0,
+              "database": 3.541666666666667,
+              "total": 68.54166666666667
+            },
+            "peak_memory_mb": {
+              "application": 776.52734375,
+              "database": 75.46875
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 30.070783615112305,
+            "achieved_rate_per_s": 4.988230500405594,
+            "final_backlog_ms": 270.7836627960205,
+            "ingest_latency_ms": {
+              "mean": 266.8846909205119,
+              "p50": 264.92440700531006,
+              "p95": 279.19424772262573,
+              "p99": 286.9249510765075,
+              "max": 320.9700584411621
+            },
+            "decision_latency_ms": {
+              "mean": 266.8846909205119,
+              "p50": 264.92440700531006,
+              "p95": 279.19424772262573,
+              "p99": 286.9249510765075,
+              "max": 320.9700584411621
+            },
+            "cold_start_s": 8.0581738999972,
+            "cpu_s_per_1000_txn": {
+              "application": 54.270833333333336,
+              "database": 2.3958333333333335,
+              "total": 56.66666666666667
+            },
+            "peak_memory_mb": {
+              "application": 777.91015625,
+              "database": 75.59375
+            },
+            "max_score_difference": 0.0
+          }
+        ]
+      },
+      "run_conditions": [
+        {
+          "run": 1,
+          "mode": "external_batch",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 11.950000000000001,
+          "available_gb_at_start": 4.71,
+          "other_programs_cpu_percent": 21.6
+        },
+        {
+          "run": 1,
+          "mode": "in_database",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 10.2,
+          "available_gb_at_start": 4.61,
+          "other_programs_cpu_percent": 9.7
+        },
+        {
+          "run": 1,
+          "mode": "application",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 18.1,
+          "available_gb_at_start": 4.65,
+          "other_programs_cpu_percent": 10.6
+        },
+        {
+          "run": 2,
+          "mode": "external_batch",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 7.45,
+          "available_gb_at_start": 4.67,
+          "other_programs_cpu_percent": 13.9
+        },
+        {
+          "run": 2,
+          "mode": "in_database",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 13.85,
+          "available_gb_at_start": 4.7,
+          "other_programs_cpu_percent": 14.1
+        },
+        {
+          "run": 2,
+          "mode": "application",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 7.25,
+          "available_gb_at_start": 4.71,
+          "other_programs_cpu_percent": 18.7
+        },
+        {
+          "run": 3,
+          "mode": "external_batch",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 7.9,
+          "available_gb_at_start": 4.65,
+          "other_programs_cpu_percent": 12.8
+        },
+        {
+          "run": 3,
+          "mode": "in_database",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 8.95,
+          "available_gb_at_start": 4.72,
+          "other_programs_cpu_percent": 16.2
+        },
+        {
+          "run": 3,
+          "mode": "application",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 1.85,
+          "available_gb_at_start": 4.66,
+          "other_programs_cpu_percent": 9.1
+        }
+      ]
+    },
+    {
+      "one_way_ms": 50,
+      "measured_round_trip_ms": {
+        "median_ms": 102.73479999887059,
+        "p95_ms": 104.24479999710456
+      },
+      "lookups": 0,
+      "architectures": {
+        "external_batch": {
+          "connections": 4.0,
+          "duration_s": 29.906646728515625,
+          "achieved_rate_per_s": 5.015607445450473,
+          "final_backlog_ms": 106.64677619934082,
+          "max_batch_rows": 50.0,
+          "max_batch_seconds": 0.6618869000012637,
+          "ingest_latency_ms": {
+            "mean": 107.52344926198323,
+            "p50": 105.08644580841064,
+            "p95": 118.54299306869505,
+            "p99": 148.80543470382673,
+            "max": 162.9030704498291
+          },
+          "decision_latency_ms": {
+            "mean": 5444.462084770203,
+            "p50": 5422.567963600159,
+            "p95": 9921.847677230835,
+            "p99": 10321.473426818848,
+            "max": 10328.432321548462
+          },
+          "cold_start_s": 8.254797100002179,
+          "cpu_s_per_1000_txn": {
+            "application": 5.3125,
+            "database": 1.6666666666666667,
+            "total": 6.979166666666667
+          },
+          "peak_memory_mb": {
+            "application": 191.953125,
+            "database": 73.2734375
+          },
+          "max_score_difference": 0.0
+        },
+        "in_database": {
+          "connections": 4.0,
+          "duration_s": 29.964287519454956,
+          "achieved_rate_per_s": 5.0059591739870095,
+          "final_backlog_ms": 164.28756713867188,
+          "ingest_latency_ms": {
+            "mean": 156.2967300415039,
+            "p50": 154.98387813568115,
+            "p95": 165.55227041244504,
+            "p99": 170.20094633102417,
+            "max": 176.08308792114258
+          },
+          "decision_latency_ms": {
+            "mean": 156.2967300415039,
+            "p50": 154.98387813568115,
+            "p95": 165.55227041244504,
+            "p99": 170.20094633102417,
+            "max": 176.08308792114258
+          },
+          "cold_start_s": 9.202198599999974,
+          "cpu_s_per_1000_txn": {
+            "application": 0.20833333333333334,
+            "database": 52.29166666666667,
+            "total": 52.91666666666667
+          },
+          "peak_memory_mb": {
+            "application": 162.7109375,
+            "database": 804.95703125
+          },
+          "max_score_difference": 0.0
+        },
+        "application": {
+          "connections": 4.0,
+          "duration_s": 29.986177682876587,
+          "achieved_rate_per_s": 5.002304781434565,
+          "final_backlog_ms": 186.17773056030273,
+          "ingest_latency_ms": {
+            "mean": 160.50684769948325,
+            "p50": 157.22644329071045,
+            "p95": 175.84329843521118,
+            "p99": 199.29468154907215,
+            "max": 218.5206413269043
+          },
+          "decision_latency_ms": {
+            "mean": 160.50684769948325,
+            "p50": 157.22644329071045,
+            "p95": 175.84329843521118,
+            "p99": 199.29468154907215,
+            "max": 218.5206413269043
+          },
+          "cold_start_s": 7.989860599998792,
+          "cpu_s_per_1000_txn": {
+            "application": 54.583333333333336,
+            "database": 1.6666666666666667,
+            "total": 55.833333333333336
+          },
+          "peak_memory_mb": {
+            "application": 776.99609375,
+            "database": 72.7734375
+          },
+          "max_score_difference": 0.0
+        }
+      },
+      "individual_runs": {
+        "external_batch": [
+          {
+            "connections": 4,
+            "duration_s": 29.906646728515625,
+            "achieved_rate_per_s": 5.015607445450473,
+            "final_backlog_ms": 106.64677619934082,
+            "max_batch_rows": 50,
+            "max_batch_seconds": 0.677328400000988,
+            "ingest_latency_ms": {
+              "mean": 107.52344926198323,
+              "p50": 105.08644580841064,
+              "p95": 121.9714999198912,
+              "p99": 148.80543470382673,
+              "max": 162.9030704498291
+            },
+            "decision_latency_ms": {
+              "mean": 5527.117207845052,
+              "p50": 5511.044979095459,
+              "p95": 9993.717277050016,
+              "p99": 10390.359704494476,
+              "max": 10474.540710449219
+            },
+            "cold_start_s": 8.254797100002179,
+            "cpu_s_per_1000_txn": {
+              "application": 5.3125,
+              "database": 1.6666666666666667,
+              "total": 6.979166666666667
+            },
+            "peak_memory_mb": {
+              "application": 191.3046875,
+              "database": 73.2734375
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.907075881958008,
+            "achieved_rate_per_s": 5.015535473680002,
+            "final_backlog_ms": 107.07592964172363,
+            "max_batch_rows": 50,
+            "max_batch_seconds": 0.6618869000012637,
+            "ingest_latency_ms": {
+              "mean": 107.56334940592448,
+              "p50": 105.25918006896973,
+              "p95": 118.54299306869505,
+              "p99": 153.69016647338853,
+              "max": 163.0842685699463
+            },
+            "decision_latency_ms": {
+              "mean": 5444.462084770203,
+              "p50": 5422.567963600159,
+              "p95": 9921.847677230835,
+              "p99": 10321.473426818848,
+              "max": 10328.432321548462
+            },
+            "cold_start_s": 11.45941220000168,
+            "cpu_s_per_1000_txn": {
+              "application": 6.145833333333334,
+              "database": 1.6666666666666667,
+              "total": 7.8125
+            },
+            "peak_memory_mb": {
+              "application": 191.953125,
+              "database": 72.90625
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.906337022781372,
+            "achieved_rate_per_s": 5.015659386361372,
+            "final_backlog_ms": 106.33707046508789,
+            "max_batch_rows": 50,
+            "max_batch_seconds": 0.6114496999980474,
+            "ingest_latency_ms": {
+              "mean": 105.30614217122395,
+              "p50": 104.87163066864014,
+              "p95": 106.94745779037476,
+              "p99": 113.31351041793819,
+              "max": 124.24731254577637
+            },
+            "decision_latency_ms": {
+              "mean": 5317.7665487925215,
+              "p50": 5299.413442611694,
+              "p95": 9795.150792598724,
+              "p99": 10194.240958690643,
+              "max": 10216.187715530396
+            },
+            "cold_start_s": 8.113754999998491,
+            "cpu_s_per_1000_txn": {
+              "application": 2.916666666666667,
+              "database": 1.875,
+              "total": 4.791666666666667
+            },
+            "peak_memory_mb": {
+              "application": 192.27734375,
+              "database": 73.66796875
+            },
+            "max_score_difference": 0.0
+          }
+        ],
+        "in_database": [
+          {
+            "connections": 4,
+            "duration_s": 29.96328830718994,
+            "achieved_rate_per_s": 5.006126112133235,
+            "final_backlog_ms": 163.28835487365723,
+            "ingest_latency_ms": {
+              "mean": 155.01203219095865,
+              "p50": 154.65211868286133,
+              "p95": 163.3526086807251,
+              "p99": 170.20094633102417,
+              "max": 176.08308792114258
+            },
+            "decision_latency_ms": {
+              "mean": 155.01203219095865,
+              "p50": 154.65211868286133,
+              "p95": 163.3526086807251,
+              "p99": 170.20094633102417,
+              "max": 176.08308792114258
+            },
+            "cold_start_s": 9.382369599999947,
+            "cpu_s_per_1000_txn": {
+              "application": 0.10416666666666667,
+              "database": 50.10416666666667,
+              "total": 50.208333333333336
+            },
+            "peak_memory_mb": {
+              "application": 162.3671875,
+              "database": 804.640625
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.976004600524902,
+            "achieved_rate_per_s": 5.0040024345797365,
+            "final_backlog_ms": 176.00464820861816,
+            "ingest_latency_ms": {
+              "mean": 169.2616399129232,
+              "p50": 163.86830806732178,
+              "p95": 205.09176254272458,
+              "p99": 234.76662158966045,
+              "max": 259.75799560546875
+            },
+            "decision_latency_ms": {
+              "mean": 169.2616399129232,
+              "p50": 163.86830806732178,
+              "p95": 205.09176254272458,
+              "p99": 234.76662158966045,
+              "max": 259.75799560546875
+            },
+            "cold_start_s": 8.483626400000503,
+            "cpu_s_per_1000_txn": {
+              "application": 0.20833333333333334,
+              "database": 62.8125,
+              "total": 63.020833333333336
+            },
+            "peak_memory_mb": {
+              "application": 162.7109375,
+              "database": 805.87890625
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.964287519454956,
+            "achieved_rate_per_s": 5.0059591739870095,
+            "final_backlog_ms": 164.28756713867188,
+            "ingest_latency_ms": {
+              "mean": 156.2967300415039,
+              "p50": 154.98387813568115,
+              "p95": 165.55227041244504,
+              "p99": 169.4735336303711,
+              "max": 175.30035972595215
+            },
+            "decision_latency_ms": {
+              "mean": 156.2967300415039,
+              "p50": 154.98387813568115,
+              "p95": 165.55227041244504,
+              "p99": 169.4735336303711,
+              "max": 175.30035972595215
+            },
+            "cold_start_s": 9.202198599999974,
+            "cpu_s_per_1000_txn": {
+              "application": 0.625,
+              "database": 52.29166666666667,
+              "total": 52.91666666666667
+            },
+            "peak_memory_mb": {
+              "application": 162.76171875,
+              "database": 804.95703125
+            },
+            "max_score_difference": 0.0
+          }
+        ],
+        "application": [
+          {
+            "connections": 4,
+            "duration_s": 29.986177682876587,
+            "achieved_rate_per_s": 5.002304781434565,
+            "final_backlog_ms": 186.17773056030273,
+            "ingest_latency_ms": {
+              "mean": 162.48746236165366,
+              "p50": 157.22644329071045,
+              "p95": 189.8205995559692,
+              "p99": 206.94532155990592,
+              "max": 243.27588081359863
+            },
+            "decision_latency_ms": {
+              "mean": 162.48746236165366,
+              "p50": 157.22644329071045,
+              "p95": 189.8205995559692,
+              "p99": 206.94532155990592,
+              "max": 243.27588081359863
+            },
+            "cold_start_s": 7.989860599998792,
+            "cpu_s_per_1000_txn": {
+              "application": 56.5625,
+              "database": 1.6666666666666667,
+              "total": 58.22916666666667
+            },
+            "peak_memory_mb": {
+              "application": 775.8125,
+              "database": 73.44140625
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 30.005655527114868,
+            "achieved_rate_per_s": 4.999057589808402,
+            "final_backlog_ms": 205.65557479858398,
+            "ingest_latency_ms": {
+              "mean": 160.50684769948325,
+              "p50": 157.39679336547852,
+              "p95": 175.84329843521118,
+              "p99": 199.29468154907215,
+              "max": 218.5206413269043
+            },
+            "decision_latency_ms": {
+              "mean": 160.50684769948325,
+              "p50": 157.39679336547852,
+              "p95": 175.84329843521118,
+              "p99": 199.29468154907215,
+              "max": 218.5206413269043
+            },
+            "cold_start_s": 8.219834899999114,
+            "cpu_s_per_1000_txn": {
+              "application": 54.583333333333336,
+              "database": 1.25,
+              "total": 55.833333333333336
+            },
+            "peak_memory_mb": {
+              "application": 776.99609375,
+              "database": 72.7734375
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.977242946624756,
+            "achieved_rate_per_s": 5.0037957215438,
+            "final_backlog_ms": 177.24299430847168,
+            "ingest_latency_ms": {
+              "mean": 156.98744932810465,
+              "p50": 155.58254718780518,
+              "p95": 172.87223339080808,
+              "p99": 184.64023351669303,
+              "max": 196.54393196105957
+            },
+            "decision_latency_ms": {
+              "mean": 156.98744932810465,
+              "p50": 155.58254718780518,
+              "p95": 172.87223339080808,
+              "p99": 184.64023351669303,
+              "max": 196.54393196105957
+            },
+            "cold_start_s": 7.544657800001005,
+            "cpu_s_per_1000_txn": {
+              "application": 50.9375,
+              "database": 1.7708333333333335,
+              "total": 52.708333333333336
+            },
+            "peak_memory_mb": {
+              "application": 777.47265625,
+              "database": 72.6875
+            },
+            "max_score_difference": 0.0
+          }
+        ]
+      },
+      "run_conditions": [
+        {
+          "run": 1,
+          "mode": "external_batch",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 2.8,
+          "available_gb_at_start": 4.72,
+          "other_programs_cpu_percent": 16.9
+        },
+        {
+          "run": 1,
+          "mode": "in_database",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 8.100000000000001,
+          "available_gb_at_start": 4.67,
+          "other_programs_cpu_percent": 10.2
+        },
+        {
+          "run": 1,
+          "mode": "application",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 18.2,
+          "available_gb_at_start": 4.76,
+          "other_programs_cpu_percent": 16.5
+        },
+        {
+          "run": 2,
+          "mode": "external_batch",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 8.549999999999999,
+          "available_gb_at_start": 4.74,
+          "other_programs_cpu_percent": 20.8
+        },
+        {
+          "run": 2,
+          "mode": "in_database",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 14.95,
+          "available_gb_at_start": 4.72,
+          "other_programs_cpu_percent": 16.1
+        },
+        {
+          "run": 2,
+          "mode": "application",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 1.5,
+          "available_gb_at_start": 4.67,
+          "other_programs_cpu_percent": 11.0
+        },
+        {
+          "run": 3,
+          "mode": "external_batch",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 19.4,
+          "available_gb_at_start": 4.72,
+          "other_programs_cpu_percent": 11.8
+        },
+        {
+          "run": 3,
+          "mode": "in_database",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 8.7,
+          "available_gb_at_start": 4.67,
+          "other_programs_cpu_percent": 7.3
+        },
+        {
+          "run": 3,
+          "mode": "application",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 10.9,
+          "available_gb_at_start": 4.68,
+          "other_programs_cpu_percent": 10.6
+        }
+      ]
+    },
+    {
+      "one_way_ms": 50,
+      "measured_round_trip_ms": {
+        "median_ms": 102.73479999887059,
+        "p95_ms": 104.24479999710456
+      },
+      "lookups": 3,
+      "architectures": {
+        "external_batch": {
+          "connections": 4.0,
+          "duration_s": 29.90450167655945,
+          "achieved_rate_per_s": 5.0159672153165165,
+          "final_backlog_ms": 104.50172424316406,
+          "max_batch_rows": 50.0,
+          "max_batch_seconds": 0.7564163999995799,
+          "ingest_latency_ms": {
+            "mean": 106.11881732940674,
+            "p50": 104.93922233581543,
+            "p95": 110.70252656936646,
+            "p99": 132.777576446533,
+            "max": 156.71706199645996
+          },
+          "decision_latency_ms": {
+            "mean": 5490.584653218587,
+            "p50": 5473.355770111084,
+            "p95": 9959.562015533447,
+            "p99": 10359.3359375,
+            "max": 10466.21584892273
+          },
+          "cold_start_s": 8.098446100000729,
+          "cpu_s_per_1000_txn": {
+            "application": 4.6875,
+            "database": 1.3541666666666667,
+            "total": 6.041666666666667
+          },
+          "peak_memory_mb": {
+            "application": 191.47265625,
+            "database": 73.11328125
+          },
+          "max_score_difference": 0.0
+        },
+        "in_database": {
+          "connections": 4.0,
+          "duration_s": 29.955339193344116,
+          "achieved_rate_per_s": 5.0074545653393585,
+          "final_backlog_ms": 155.33924102783203,
+          "ingest_latency_ms": {
+            "mean": 161.63299083709717,
+            "p50": 156.2941074371338,
+            "p95": 190.08051156997675,
+            "p99": 214.8975205421446,
+            "max": 229.00772094726562
+          },
+          "decision_latency_ms": {
+            "mean": 161.63299083709717,
+            "p50": 156.2941074371338,
+            "p95": 190.08051156997675,
+            "p99": 214.8975205421446,
+            "max": 229.00772094726562
+          },
+          "cold_start_s": 8.361651399998664,
+          "cpu_s_per_1000_txn": {
+            "application": 0.4166666666666667,
+            "database": 55.3125,
+            "total": 55.520833333333336
+          },
+          "peak_memory_mb": {
+            "application": 162.37109375,
+            "database": 805.64453125
+          },
+          "max_score_difference": 0.0
+        },
+        "application": {
+          "connections": 4.0,
+          "duration_s": 30.309839963912964,
+          "achieved_rate_per_s": 4.9488878918064465,
+          "final_backlog_ms": 509.8400115966797,
+          "ingest_latency_ms": {
+            "mean": 469.6659056345622,
+            "p50": 466.70258045196533,
+            "p95": 488.35532665252686,
+            "p99": 517.5045442581176,
+            "max": 525.6011486053467
+          },
+          "decision_latency_ms": {
+            "mean": 469.6659056345622,
+            "p50": 466.70258045196533,
+            "p95": 488.35532665252686,
+            "p99": 517.5045442581176,
+            "max": 525.6011486053467
+          },
+          "cold_start_s": 7.487448299998505,
+          "cpu_s_per_1000_txn": {
+            "application": 56.66666666666667,
+            "database": 2.1875,
+            "total": 59.16666666666667
+          },
+          "peak_memory_mb": {
+            "application": 778.43359375,
+            "database": 75.5703125
+          },
+          "max_score_difference": 0.0
+        }
+      },
+      "individual_runs": {
+        "external_batch": [
+          {
+            "connections": 4,
+            "duration_s": 29.90419864654541,
+            "achieved_rate_per_s": 5.016018043918669,
+            "final_backlog_ms": 104.19869422912598,
+            "max_batch_rows": 50,
+            "max_batch_seconds": 0.7564163999995799,
+            "ingest_latency_ms": {
+              "mean": 107.06333955128987,
+              "p50": 104.95138168334961,
+              "p95": 119.56382989883419,
+              "p99": 139.16289567947385,
+              "max": 162.3706817626953
+            },
+            "decision_latency_ms": {
+              "mean": 5479.841987291972,
+              "p50": 5473.355770111084,
+              "p95": 9905.227863788605,
+              "p99": 10303.429262638092,
+              "max": 10466.21584892273
+            },
+            "cold_start_s": 8.098836099998152,
+            "cpu_s_per_1000_txn": {
+              "application": 4.6875,
+              "database": 1.3541666666666667,
+              "total": 6.041666666666667
+            },
+            "peak_memory_mb": {
+              "application": 191.3671875,
+              "database": 73.11328125
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.90450167655945,
+            "achieved_rate_per_s": 5.0159672153165165,
+            "final_backlog_ms": 104.50172424316406,
+            "max_batch_rows": 50,
+            "max_batch_seconds": 0.7516356999985874,
+            "ingest_latency_ms": {
+              "mean": 105.59202353159587,
+              "p50": 104.75325584411621,
+              "p95": 110.09153127670288,
+              "p99": 119.5464038848876,
+              "max": 151.41654014587402
+            },
+            "decision_latency_ms": {
+              "mean": 5606.433464686076,
+              "p50": 5583.395600318909,
+              "p95": 10081.55084848404,
+              "p99": 10481.059267520905,
+              "max": 10491.997718811035
+            },
+            "cold_start_s": 7.840592100001231,
+            "cpu_s_per_1000_txn": {
+              "application": 3.0208333333333335,
+              "database": 2.916666666666667,
+              "total": 5.9375
+            },
+            "peak_memory_mb": {
+              "application": 191.890625,
+              "database": 73.15625
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.905304193496704,
+            "achieved_rate_per_s": 5.015832610477824,
+            "final_backlog_ms": 105.30424118041992,
+            "max_batch_rows": 50,
+            "max_batch_seconds": 0.7644646999979159,
+            "ingest_latency_ms": {
+              "mean": 106.11881732940674,
+              "p50": 104.93922233581543,
+              "p95": 110.70252656936646,
+              "p99": 132.777576446533,
+              "max": 156.71706199645996
+            },
+            "decision_latency_ms": {
+              "mean": 5490.584653218587,
+              "p50": 5460.190176963806,
+              "p95": 9959.562015533447,
+              "p99": 10359.3359375,
+              "max": 10363.928079605103
+            },
+            "cold_start_s": 8.098446100000729,
+            "cpu_s_per_1000_txn": {
+              "application": 6.145833333333334,
+              "database": 0.7291666666666667,
+              "total": 6.875
+            },
+            "peak_memory_mb": {
+              "application": 191.47265625,
+              "database": 72.97265625
+            },
+            "max_score_difference": 0.0
+          }
+        ],
+        "in_database": [
+          {
+            "connections": 4,
+            "duration_s": 29.943437099456787,
+            "achieved_rate_per_s": 5.009444957897675,
+            "final_backlog_ms": 143.43714714050293,
+            "ingest_latency_ms": {
+              "mean": 144.91705258687338,
+              "p50": 143.82243156433105,
+              "p95": 158.01057815551755,
+              "p99": 169.1497230529785,
+              "max": 200.49262046813965
+            },
+            "decision_latency_ms": {
+              "mean": 144.91705258687338,
+              "p50": 143.82243156433105,
+              "p95": 158.01057815551755,
+              "p99": 169.1497230529785,
+              "max": 200.49262046813965
+            },
+            "cold_start_s": 7.704062599997997,
+            "cpu_s_per_1000_txn": {
+              "application": 2.604166666666667,
+              "database": 40.520833333333336,
+              "total": 43.125
+            },
+            "peak_memory_mb": {
+              "application": 162.37109375,
+              "database": 805.64453125
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.955339193344116,
+            "achieved_rate_per_s": 5.0074545653393585,
+            "final_backlog_ms": 155.33924102783203,
+            "ingest_latency_ms": {
+              "mean": 166.53318723042807,
+              "p50": 159.26480293273926,
+              "p95": 190.08051156997675,
+              "p99": 291.6884851455685,
+              "max": 508.70537757873535
+            },
+            "decision_latency_ms": {
+              "mean": 166.53318723042807,
+              "p50": 159.26480293273926,
+              "p95": 190.08051156997675,
+              "p99": 291.6884851455685,
+              "max": 508.70537757873535
+            },
+            "cold_start_s": 8.836544900001172,
+            "cpu_s_per_1000_txn": {
+              "application": 0.4166666666666667,
+              "database": 57.29166666666667,
+              "total": 57.708333333333336
+            },
+            "peak_memory_mb": {
+              "application": 162.63671875,
+              "database": 804.4296875
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 29.95797634124756,
+            "achieved_rate_per_s": 5.007013767931745,
+            "final_backlog_ms": 157.9763889312744,
+            "ingest_latency_ms": {
+              "mean": 161.63299083709717,
+              "p50": 156.2941074371338,
+              "p95": 192.00888872146604,
+              "p99": 214.8975205421446,
+              "max": 229.00772094726562
+            },
+            "decision_latency_ms": {
+              "mean": 161.63299083709717,
+              "p50": 156.2941074371338,
+              "p95": 192.00888872146604,
+              "p99": 214.8975205421446,
+              "max": 229.00772094726562
+            },
+            "cold_start_s": 8.361651399998664,
+            "cpu_s_per_1000_txn": {
+              "application": 0.20833333333333334,
+              "database": 55.3125,
+              "total": 55.520833333333336
+            },
+            "peak_memory_mb": {
+              "application": 162.171875,
+              "database": 805.98828125
+            },
+            "max_score_difference": 0.0
+          }
+        ],
+        "application": [
+          {
+            "connections": 4,
+            "duration_s": 30.311017513275146,
+            "achieved_rate_per_s": 4.9486956330088665,
+            "final_backlog_ms": 511.0175609588623,
+            "ingest_latency_ms": {
+              "mean": 478.29315185546875,
+              "p50": 472.2639322280884,
+              "p95": 517.0373558998108,
+              "p99": 546.2680935859678,
+              "max": 562.9463195800781
+            },
+            "decision_latency_ms": {
+              "mean": 478.29315185546875,
+              "p50": 472.2639322280884,
+              "p95": 517.0373558998108,
+              "p99": 546.2680935859678,
+              "max": 562.9463195800781
+            },
+            "cold_start_s": 6.590095100000326,
+            "cpu_s_per_1000_txn": {
+              "application": 62.1875,
+              "database": 2.1875,
+              "total": 64.375
+            },
+            "peak_memory_mb": {
+              "application": 778.43359375,
+              "database": 75.56640625
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 30.28322172164917,
+            "achieved_rate_per_s": 4.953237848295596,
+            "final_backlog_ms": 483.22176933288574,
+            "ingest_latency_ms": {
+              "mean": 468.5271755854289,
+              "p50": 465.7546281814575,
+              "p95": 483.6979269981384,
+              "p99": 493.78684759140003,
+              "max": 524.2321491241455
+            },
+            "decision_latency_ms": {
+              "mean": 468.5271755854289,
+              "p50": 465.7546281814575,
+              "p95": 483.6979269981384,
+              "p99": 493.78684759140003,
+              "max": 524.2321491241455
+            },
+            "cold_start_s": 8.806061600000248,
+            "cpu_s_per_1000_txn": {
+              "application": 55.72916666666667,
+              "database": 2.1875,
+              "total": 57.91666666666667
+            },
+            "peak_memory_mb": {
+              "application": 778.45703125,
+              "database": 75.5703125
+            },
+            "max_score_difference": 0.0
+          },
+          {
+            "connections": 4,
+            "duration_s": 30.309839963912964,
+            "achieved_rate_per_s": 4.9488878918064465,
+            "final_backlog_ms": 509.8400115966797,
+            "ingest_latency_ms": {
+              "mean": 469.6659056345622,
+              "p50": 466.70258045196533,
+              "p95": 488.35532665252686,
+              "p99": 517.5045442581176,
+              "max": 525.6011486053467
+            },
+            "decision_latency_ms": {
+              "mean": 469.6659056345622,
+              "p50": 466.70258045196533,
+              "p95": 488.35532665252686,
+              "p99": 517.5045442581176,
+              "max": 525.6011486053467
+            },
+            "cold_start_s": 7.487448299998505,
+            "cpu_s_per_1000_txn": {
+              "application": 56.66666666666667,
+              "database": 2.5,
+              "total": 59.16666666666667
+            },
+            "peak_memory_mb": {
+              "application": 776.0625,
+              "database": 75.59375
+            },
+            "max_score_difference": 0.0
+          }
+        ]
+      },
+      "run_conditions": [
+        {
+          "run": 1,
+          "mode": "external_batch",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 4.85,
+          "available_gb_at_start": 4.72,
+          "other_programs_cpu_percent": 21.5
+        },
+        {
+          "run": 1,
+          "mode": "in_database",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 4.6,
+          "available_gb_at_start": 4.75,
+          "other_programs_cpu_percent": 11.0
+        },
+        {
+          "run": 1,
+          "mode": "application",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 11.899999999999999,
+          "available_gb_at_start": 4.89,
+          "other_programs_cpu_percent": 18.7
+        },
+        {
+          "run": 2,
+          "mode": "external_batch",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 7.45,
+          "available_gb_at_start": 4.8,
+          "other_programs_cpu_percent": 10.0
+        },
+        {
+          "run": 2,
+          "mode": "in_database",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 16.75,
+          "available_gb_at_start": 4.86,
+          "other_programs_cpu_percent": 11.1
+        },
+        {
+          "run": 2,
+          "mode": "application",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 7.4,
+          "available_gb_at_start": 4.59,
+          "other_programs_cpu_percent": 8.0
+        },
+        {
+          "run": 3,
+          "mode": "external_batch",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 5.75,
+          "available_gb_at_start": 4.72,
+          "other_programs_cpu_percent": 10.8
+        },
+        {
+          "run": 3,
+          "mode": "in_database",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 2.25,
+          "available_gb_at_start": 4.76,
+          "other_programs_cpu_percent": 15.2
+        },
+        {
+          "run": 3,
+          "mode": "application",
+          "quiet_at_start": true,
+          "cpu_percent_at_start": 11.399999999999999,
+          "available_gb_at_start": 4.72,
+          "other_programs_cpu_percent": 11.8
+        }
+      ]
+    }
+  ]
+}
