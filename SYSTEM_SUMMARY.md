@@ -103,7 +103,7 @@ PostgreSQL through a connection pool, configured by `DATABASE_URL` or the `PG*` 
 
 ### 3.6 API (`api_server.py`)
 
-Token-based login (24-hour tokens), cross-origin access enabled, default limits of 200 requests a day and 50 an hour per address with lower limits on some routes. Endpoints: login; `analyze` (one transaction); `batch-analyze` (up to 500, scored synchronously); `recent` (filterable by decision); `sample`; `statistics/fraud` and `statistics/patterns`; `customers/<id>/risk-profile`; `metrics/roi`; `reports/executive-summary`; `health`.
+Token-based login (24-hour tokens signed with `SECRET_KEY`, which is required), cross-origin access enabled, default limits of 200 requests a day and 50 an hour per address with lower limits on some routes (login: 10 attempts a minute). Login credentials come from `ADMIN_USERNAME` and `ADMIN_PASSWORD_HASH` or `ADMIN_PASSWORD`, defaulting to the public demo password with a logged warning. Transactions are validated before scoring (`validation.py`): ids are 1 to 64 letters, digits, hyphens or underscores and the amount is a number from 0 to 1,000,000,000,000. Server errors return a generic message with a short reference id; the detail goes to the log. Endpoints: login; `analyze` (one transaction); `batch-analyze` (up to 500, scored synchronously, bad rows reported and skipped); `recent` (filterable by decision); `sample`; `statistics/fraud` and `statistics/patterns`; `customers/<id>/risk-profile`; `metrics/roi`; `reports/executive-summary`; `health`.
 
 ### 3.7 Analytics (`analytics.py`)
 
@@ -189,13 +189,13 @@ The full grid (including 2 connections) is in the results file and the methodolo
 
 ## 6. Deployment
 
-`render.yaml` defines the API (gunicorn, one worker) and the static dashboard on Render's free tier; the database is a free Neon PostgreSQL instance. Set `DATABASE_URL` (the connection string) and `SECRET_KEY` as environment variables on the host. The service sleeps after 15 minutes idle. The deployment is a demonstration: no latency measurement was made on it.
+`render.yaml` defines the API (gunicorn, one worker) and the static dashboard on Render's free tier; the database is a free Neon PostgreSQL instance. Set `DATABASE_URL` (the connection string) and `SECRET_KEY` as environment variables on the host (`render.yaml` generates the key), and `ADMIN_PASSWORD_HASH` or `ADMIN_PASSWORD` to replace the public demo password. The service sleeps after 15 minutes idle. The deployment is a demonstration: no latency measurement was made on it.
 
 ---
 
 ## 7. Security
 
-This section records what the code does and does not do about security. It comes from reading `api_server.py`, `database_module.py`, `admin-dashboard/script.js` and the benchmark code. It is a code review of a prototype, not a penetration test: nothing here has been tried by an attacker, and "not fixed" means the weakness is still in the code.
+This section records what the code does and does not do about security. It comes from reading `api_server.py`, `database_module.py`, `admin-dashboard/script.js` and the benchmark code. It is a code review of a prototype, not a penetration test: nothing here has been tried by an attacker. "Fixed", "partly fixed" and "not fixed" describe the code in this repository; the live deployment changes only when it is redeployed from this code. The fixes are covered by tests in `tests/test_security.py`, and the cross-site scripting fix was also checked in a browser against the original dashboard.
 
 ### 7.1 Context
 
@@ -203,35 +203,38 @@ The live demo holds no sensitive data. The transactions are a public anonymised 
 
 ### 7.2 What is in place
 
-- **Authentication.** Nine of the eleven routes need a signed token (a JWT using HS256); only login and the health check are open. The signing algorithm is fixed when a token is checked, so a token cannot choose its own, and tokens expire after 24 hours.
+- **Authentication.** Nine of the eleven routes need a signed token (a JWT using HS256); only login and the health check are open. The signing algorithm is fixed when a token is checked, so a token cannot choose its own, and tokens expire after 24 hours. The signing key comes from `SECRET_KEY`, which is required (there is no built-in default outside debug mode). Login credentials come from the environment, are compared in constant time, and login is limited to 10 attempts a minute.
 - **Database access.** Every query uses bound parameters. No query is built from request text (checked across `database_module.py`, `analytics.py` and the API). The two filters on the recent-transactions route are validated: the limit is clamped to 1 to 200 and the decision must be one of four values. Batches are capped at 500 transactions.
+- **Input validation and output escaping.** The server accepts transaction and customer ids only as 1 to 64 letters, digits, hyphens or underscores, and the amount only as a number from 0 to 1,000,000,000,000. The dashboard escapes every value that came from the API or a file before putting it into the page, so a hostile value is shown as plain text and runs nothing.
+- **Errors.** Server errors return a generic message and a short reference id; the detail is logged under that id.
 - **Rate limits.** 200 requests a day and 50 an hour per address by default, lower on some routes.
 - **Debug mode** is off unless `FLASK_DEBUG=true`.
 - **Secrets** come from environment variables. `.env` is excluded from git, and a scan of the repository found no credentials. On Render the `SECRET_KEY` is generated by the platform, and the database connection string is set in the host's dashboard; the example connection string asks for an encrypted connection (`sslmode=require`).
 - **Transport.** The hosted API is served over HTTPS by the host.
 - **Token storage.** The dashboard keeps the token in `sessionStorage`, which is cleared when the tab closes.
 - **No unpickling in the service.** The deployed API trains its model at start-up and does not load any pickle file; only the benchmarks do.
+- **Tests.** `tests/test_security.py` (71 tests) covers validation, login, the signing key, error handling and the dashboard's escaping. They fail on the original code (26 of the 71) and pass on the fixed code.
 - **The latency relay** used in the network test listens on the local machine only.
 
 ### 7.3 Known weaknesses
 
 | # | Weakness | Where and why it matters | Fix | Status |
 |---|---|---|---|---|
-| 1 | **Stored cross-site scripting in the dashboard** | `customer_id` and `transaction_id` are accepted from callers with only a presence check, stored, and later inserted into the page with `innerHTML` and no escaping (recent-transactions table, customer profile, analysis and upload results). Script supplied by any authenticated caller would run in the browser of whoever opens the dashboard and could read the session token and call the API. Because the demo's login is public, "authenticated caller" means anyone. | Escape every API-derived value before it goes into the page (or use `textContent`), and validate ids on the server (length limit; letters, digits, hyphen, underscore) | Not fixed |
-| 2 | **Hard-coded credentials** | `admin` / `admin`, no user table, no roles; every valid token can call every endpoint. Anyone who reads the README can log in, and actions cannot be attributed to a person. | Users with hashed passwords (or credentials from the environment), roles, lockout after failed attempts | Not fixed |
-| 3 | **Default signing key in the source** | If `SECRET_KEY` is not set, a fixed key written in the code is used, so anyone who has read the code could forge tokens for an instance started without the variable. The hosted service sets the variable; a local run may not. | Refuse to start without `SECRET_KEY` outside debug mode | Not fixed |
-| 4 | **Error details returned to callers** | Nine handlers return the raw exception text, which can reveal database messages or internal details | Return a generic message and log the detail on the server | Not fixed |
+| 1 | **Stored cross-site scripting in the dashboard** | The API accepted `customer_id` and `transaction_id` with only a presence check, and the dashboard inserted stored values into the page with `innerHTML` and no escaping, so script supplied by any caller would have run in the browser of whoever opened the dashboard. Checked in a browser: the original dashboard ran an injected script; the fixed one shows the text and runs nothing. | Fixed in two layers: the dashboard escapes every value from the API or a file, and the server accepts ids only in a plain character set (`validation.py`) | Fixed |
+| 2 | **Shared admin login** | Credentials now come from the environment (`ADMIN_USERNAME`, and `ADMIN_PASSWORD_HASH` or `ADMIN_PASSWORD`), are compared in constant time, and login is limited to 10 attempts a minute. There is still one shared admin account with no roles, every valid token can call every endpoint, and **until a password is set the public demo password `admin` is used; the live demo is in this state.** | Set `ADMIN_PASSWORD_HASH` on the host; later, separate users with roles and lockout after repeated failures | Partly fixed |
+| 3 | **Default signing key in the source** | The API now refuses to start without `SECRET_KEY` outside debug mode; debug mode uses a development-only key and logs a warning. Tokens signed with the old built-in key are rejected (tested). | Done | Fixed |
+| 4 | **Error details returned to callers** | All nine handlers now return a generic message with a short reference id; the detail goes to the server log under that id (tested, including against the real system). | Done | Fixed |
 | 5 | **Cross-origin access open to all sites** | `CORS(app)` with defaults. Tokens travel in a header, not a cookie, so the usual cross-site request risk is limited, but scripts on any site can call the API once they hold a token. | Allow only the dashboard's origin | Not fixed |
 | 6 | **Rate limiting behind a proxy** | The limit is keyed on the connecting address and counted in memory. Behind a hosting proxy the connecting address may be the proxy's, so clients could share one limit; counters reset on restart and are not shared between workers. Not verified on Render. | Trust the proxy's forwarded-address header for a known number of proxies; use an external counter store with more than one worker | Not fixed |
-| 7 | **Thin input validation** | Only the presence of three fields is checked, so wrong types or huge values can cause server errors, and ids are unbounded (see 1) | Validate types, ranges and lengths against a schema | Not fixed |
-| 8 | **Login handler** | An empty or non-JSON body raises an error and returns a server error; there is no lockout beyond the global limit | Handle a missing body; add lockout | Not fixed |
+| 7 | **Thin input validation** | Transactions are now validated: ids as above, amount a finite number from 0 to 1,000,000,000,000, and bodies that are not JSON objects get a 400. The other fields (the 28 anonymised features, time, merchant) are not yet checked for type or range. | Validate the remaining fields against a schema | Partly fixed |
+| 8 | **Login handler** | An empty or non-JSON body now returns 400, and login is limited to 10 attempts a minute per address. There is still no lockout after repeated failures. | Lockout | Partly fixed |
 | 9 | **Open write access on the public demo** | Anyone with the public credentials can add rows to the shared database, within the rate limits, polluting the demo data and using free-tier storage | A read-only demo role, or a periodic reset | Not fixed |
 | 10 | **In-database scoring** (research harness) | It needs PostgreSQL's untrusted PL/Python language and a superuser, and loads the model from a pickle file inside the database server. A tampered model file would run arbitrary code inside the database. Each scoring session also holds its own Python and ML runtime (about 200 MB), which is not isolated from the data. | Restrict file permissions, sign and verify model files, use a dedicated database role, or consider an index-based approximation or an external scorer | Inherent to the design; memory cost is measured in `results/` |
 | 11 | **Unpinned dependencies** | `requirements.txt` gives lower bounds only and nothing scans for known vulnerabilities, so builds can change and problems can go unnoticed | Pin versions; run a dependency audit | Not done |
 | 12 | **No audit trail** | Logins and administrative actions are not recorded, and alerts are only printed to the console | A structured audit log | Not done |
 | 13 | **Personal data and the law** | The demo holds no personal data. A real deployment would hold customer data and fall under the Data Protection and Privacy Act 2019 (not yet reviewed in this project) and Bank of Uganda requirements, and the hosts are outside Uganda. | Legal and data-protection review before any real data is used | Open |
 
-Items 1 to 4 are the ones to fix first. Item 1 is the most serious, because the demo's public login makes it reachable by anyone.
+Items 1, 3 and 4 are fixed, and items 2, 7 and 8 are partly fixed. The most important remaining step for the live demo is to set `ADMIN_PASSWORD_HASH` on the host, because until then anyone who has read this README can log in and write to the shared database (item 9).
 
 ### 7.4 What a bank would need beyond this prototype
 
