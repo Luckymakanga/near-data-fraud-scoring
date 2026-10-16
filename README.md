@@ -1,488 +1,170 @@
-# UGANDA BANKING SECTOR FRAUD DETECTION SYSTEM
-## Complex Enterprise-Grade Machine Learning-Integrated Database System
+# Near-Data Fraud Scoring for Ugandan Banking
 
-A sophisticated, production-ready fraud detection platform designed specifically for Uganda's banking sector, combining advanced machine learning, real-time database processing, and comprehensive analytics.
+A research prototype and benchmark for one question:
+
+> How can machine-learning fraud scoring be integrated close to transaction data to provide timely fraud detection under the technical constraints relevant to the Ugandan banking environment?
+
+It is a project for ISBAT University (course BIT3239). The code builds one fraud model, runs it in three places (an external batch job, inside the database, and in the application tier), and measures how detection quality, decision latency and system cost change with load and with the distance between application and database.
+
+**What this is not.** It is not a production system. It uses a public European card dataset as a proxy, because no bank data was requested or used, so it says nothing about fraud rates or patterns in Uganda. Its login is a demo (`admin` / `admin`). The numbers below come from one laptop.
 
 ---
 
-## 🌐 LIVE DEPLOYMENT
+## What was measured
 
-| Service | URL |
+All figures are in `results/` and are described, with their limits, in `docs/Methodology.docx`. Latency is the time from a transaction's scheduled arrival to its committed fraud score, so queueing is included.
+
+**Detection quality** (time-ordered split, 75 frauds in the test set, real fraud prevalence restored, 95% bootstrap intervals): precision 0.39 (0.25 to 0.68), recall 0.84 (0.75 to 0.92), F1 score 0.53 (0.38 to 0.76), PR-AUC 0.75 (0.62 to 0.90), false-positive rate 0.0017. With so few frauds these intervals are wide.
+
+**Three architectures at 10 transactions per second, one connection** (median of 3 runs):
+
+| | External batch | In-database | Application tier |
+|---|---|---|---|
+| Decision latency, median | 5,045 ms | 23.2 ms | 23.1 ms |
+| Decision latency, 99th percentile | 9,944 ms | 77.7 ms | 79.0 ms |
+| Processor seconds per 1,000 transactions | 1.47 | 23.7 | 23.6 |
+
+Scores were identical in all three architectures in every run.
+
+**Rate sweep** (5 to 160 transactions per second, 1 to 4 connections, `results/rate_sweep.json`):
+- Batch latency stays set by its 10-second polling interval at every load, and the batch job kept up with 160 transactions per second.
+- Scoring on arrival decides in about 20 ms until one connection's capacity of about 55 transactions per second is exceeded, then a backlog builds and delays grow to seconds. Two connections held about 100 per second and four about 110 to 132 on this four-core laptop.
+- Memory grows with the number of scoring connections (about 240, 493 and 984 MB for in-database scoring with 1, 2 and 4 connections).
+
+**Network distance** (`results/network_latency.json`, a delaying relay between application and database):
+- When scoring needs nothing stored, in-database and application-tier scoring are equal at every distance (each pays one round trip).
+- When scoring needs stored data, the application tier pays one extra round trip per read and in-database scoring pays none: with 3 reads at a 53 ms round trip, 267 ms against 106 ms. The reads are stand-ins chosen by the study, not measurements of any bank.
+
+**Caveats that apply to all of it:** one machine; application and database on the same host unless the relay is used; a model that costs about 20 ms per transaction on this machine; the dataset spans two days, so drift is not tested; and the laptop was not perfectly quiet during the runs (details in the methodology).
+
+---
+
+## What is in the repository
+
+**The study**
+
+| File | Purpose |
 |---|---|
-| Admin Dashboard | [fraud-detection-dashboard-gp35.onrender.com](https://fraud-detection-dashboard-gp35.onrender.com) |
-| API | [fraud-detection-api-865q.onrender.com](https://fraud-detection-api-865q.onrender.com) |
+| `evaluate.py` | Detection metrics on a time-ordered split, with confidence intervals |
+| `near_data_scoring.py` | Scoring code shared by all three architectures |
+| `benchmark_architectures.py` | Replays transactions into PostgreSQL under each architecture and measures latency, processor time and memory |
+| `benchmark_sweep.py` | Rate and concurrency sweep |
+| `benchmark_network.py`, `latency_proxy.py` | Network-distance test and the delaying TCP relay it uses |
+| `benchmark_db.py` | Creates a private PostgreSQL cluster for the benchmarks (in-database scoring needs a superuser and the PL/Python language) |
+| `results/` | Measured results, as JSON |
 
-Hosted on Render (free tier) with a Neon PostgreSQL database (free tier, no expiration). Log in with `admin` / `admin`.
+**The application prototype** (this is the "application tier" architecture, and it is what is deployed)
 
-**Note:** the free Render services sleep after 15 minutes of inactivity. The first request after idle will be slow (cold start + ~60s model retraining) - that's expected, not a bug.
+| File | Purpose |
+|---|---|
+| `api_server.py` | Flask API with token login and rate limits |
+| `fraud_detection_system.py` | Orchestrator: rule checks, model score, decision |
+| `advanced_ml_models.py`, `feature_engineering.py` | The fraud model and its features |
+| `transaction_processor.py` | Feature extraction and sample transactions |
+| `database_module.py` | PostgreSQL storage |
+| `analytics.py` | Statistics, patterns, customer risk profiles (its ROI figures are illustrative; see below) |
+| `live_simulator.py` | Posts real dataset rows to the API at random intervals so a dashboard looks live |
+| `admin-dashboard/` | Static web dashboard |
 
----
+**Other:** `data/` (the dataset sample and its provenance), `docs/` (concept note, literature review, methodology, interview guide, reading notes), `render.yaml` and `Procfile` (deployment).
 
-## 🎯 PROJECT OVERVIEW
-
-This prototype demonstrates a **COMPLEX (Enterprise-Grade)** fraud detection system with:
-
-- **Advanced Machine Learning**: XGBoost, LightGBM, Isolation Forest, One-Class SVM, Neural Networks
-- **Real-Time Processing**: Stream processing with sliding windows and adaptive thresholding
-- **Database Infrastructure**: SQLite with optimized indexes and queries
-- **API Server**: RESTful endpoints with JWT authentication
-- **Anomaly Detection**: Statistical and machine learning-based methods
-- **Concept Drift Detection**: Monitors model performance degradation
-- **Business Analytics**: ROI calculations and executive reporting
-
----
-
-## 📋 SYSTEM ARCHITECTURE
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    API SERVER (Flask)                        │
-│              RESTful Endpoints + JWT Auth                    │
-└────────┬────────────────────────────────────────────────────┘
-         │
-┌────────┴────────────────────────────────────────────────────┐
-│        FRAUD DETECTION SYSTEM (Main Orchestrator)            │
-│  - Transaction Processing                                    │
-│  - Decision Making                                           │
-│  - Alert Management                                          │
-└────────┬───────────┬───────────────┬────────────────────────┘
-         │           │               │
-    ┌────▼───┐  ┌───▼────┐  ┌──────▼────┐
-    │Database│  │ ML     │  │Stream     │
-    │Manager │  │Models  │  │Processor  │
-    └────┬───┘  └───┬────┘  └──────┬────┘
-         │          │               │
-    ┌────▼──────────▼───────────────▼────┐
-    │      Advanced Analytics Engine      │
-    │  - Pattern Recognition              │
-    │  - ROI Calculation                  │
-    │  - Executive Reports                │
-    └────────────────────────────────────┘
-```
+An unfinished stream-processing sketch (`advanced_streaming.py`) and an unrelated static page (`focus-flow/`) from the first commit were removed; both are in the git history. No Kafka or other message broker is used anywhere.
 
 ---
 
-## 🔧 MODULE BREAKDOWN
+## Running it
 
-### 1. **fraud_detection_system.py** (Main System)
-- Core orchestration logic
-- Transaction processing pipeline
-- Decision combination algorithm
-- Alert management
+**Install**
 
-**Key Methods:**
-- `process_transaction()` - Real-time transaction analysis
-- `batch_process_transactions()` - Batch processing
-- `_perform_sql_filtering()` - Database pre-filtering
-- `generate_report()` - Comprehensive reporting
-
-### 2. **database_module.py** (Theme 1: Database Infrastructure)
-- SQLite database management
-- Optimized SQL queries with indexes
-- Customer profiling (behavioral analysis)
-- Transaction logging and storage
-
-**Key Features:**
-- Indexed queries for performance
-- Customer profiles for behavioral analysis
-- Fraud alert logging
-- System metrics tracking
-
-### 3. **advanced_ml_models.py** (Theme 3: Advanced ML)
-**Multiple Algorithms:**
-- **XGBoost**: Gradient boosting with GPU support
-- **LightGBM**: Faster, memory-efficient boosting
-- **Isolation Forest**: Anomaly detection
-- **One-Class SVM**: Outlier detection
-- **Voting Ensemble**: Combines all models
-
-**Features:**
-- ADASYN class balancing (advanced SMOTE)
-- Hyperparameter tuning with GridSearchCV
-- Feature importance extraction
-- ROC-AUC and F1-score metrics
-- Ensemble voting with weighted averaging
-
-### 4. **transaction_processor.py** (Theme 2 & 4)
-- Feature extraction from transactions
-- Behavioral pattern analysis
-- Anomaly computation
-- Sample transaction generation (Uganda banking context)
-
-**Features:**
-- 10+ feature extraction methods
-- Behavioral deviation scoring
-- Customer profile matching
-- Velocity and frequency analysis
-
-### 5. **advanced_streaming.py** (Theme 2: Real-Time + Theme 4: Anomaly Detection)
-**Stream Processor:**
-- Sliding window analysis (300-second window)
-- Real-time statistics tracking
-- Concept drift detection (Theme 6)
-- Adaptive thresholding
-
-**Anomaly Detector:**
-- Statistical anomaly detection (MAD method)
-- Behavioral anomalies
-- Frequency anomalies
-- Isolation-based scoring
-
-### 6. **api_server.py** (REST API & Web Integration)
-**Endpoints:**
-- `POST /api/auth/login` - Authentication
-- `POST /api/transactions/analyze` - Single transaction
-- `POST /api/transactions/batch-analyze` - Batch analysis
-- `GET /api/statistics/fraud` - Fraud statistics
-- `GET /api/statistics/patterns` - Fraud patterns
-- `GET /api/customers/<id>/risk-profile` - Customer risk
-- `GET /api/metrics/roi` - ROI metrics
-- `GET /api/reports/executive-summary` - Executive summary
-- `GET /api/health` - Health check
-
-**Features:**
-- JWT authentication
-- Rate limiting (200/day, 50/hour)
-- Request queue for async processing
-- Worker threads for background jobs
-- CORS enabled for cross-origin requests
-
-### 7. **analytics.py** (Theme 7: Business Impact)
-- Fraud statistics calculation
-- Pattern recognition and analysis
-- Customer risk profiling
-- ROI and financial metrics
-- Executive summary generation
-- Performance trends analysis
-
----
-
-## 🚀 INSTALLATION & SETUP
-
-### Prerequisites
-```bash
-- Python 3.8+
-- pip or conda
-- 4GB+ RAM (8GB recommended)
-- SQLite3
-```
-
-### Step 1: Install Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### Step 2: Verify Installation
+**Database.** The prototype and benchmarks need PostgreSQL. Copy `.env.example` to `.env` and set either `DATABASE_URL` or the `PG*` variables.
+
+**Detection quality**
+
 ```bash
-python -c "import numpy, pandas, sklearn, xgboost, lightgbm; print('✓ All dependencies installed')"
+python evaluate.py
 ```
 
-### Step 3: Run the System
-```bash
-# Main system demo
-python fraud_detection_system.py
+**The application and dashboard**
 
-# API server (requires main system initialization first)
+```bash
 python api_server.py
 ```
 
----
+Then open `admin-dashboard/index.html` (it falls back to `http://localhost:5000` when opened locally; `admin-dashboard/config.js` points at the deployed API instead, so clear it for local use). Optionally, in another terminal: `python live_simulator.py`.
 
-## 📊 RUNNING THE COMPLEX SYSTEM
+**The architecture benchmarks.** In-database scoring uses PostgreSQL's PL/Python, which must match your Python version (Python 3.13 with the PostgreSQL 18 Windows installer).
 
-### Option 1: Full System Execution
 ```bash
-python fraud_detection_system.py
+python benchmark_db.py init          # once: creates a private cluster on port 5433
+python benchmark_db.py start
+python benchmark_architectures.py    # three architectures at one load
+python benchmark_sweep.py            # rate and concurrency sweep (over an hour)
+python benchmark_network.py          # network-distance test (over an hour)
+python benchmark_db.py stop
 ```
 
-**Output:**
-- Database setup and table creation
-- ML model training with multiple algorithms
-- 500 sample transaction processing
-- Real-time fraud detection results
-- Comprehensive fraud detection report
-- JSON results export
+Timing results are only meaningful on a quiet machine: close other programs first. The sweep and the network test check the machine's load and can wait for it to settle (`--wait-quiet`).
 
-### Option 2: API Server Only
-```bash
-# First run main system to initialize
-python fraud_detection_system.py
-
-# Then start API server
-python api_server.py
-```
-
-**Access API:**
-```bash
-# Get authentication token
-curl -X POST http://localhost:5000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"admin"}'
-
-# Analyze single transaction
-curl -X POST http://localhost:5000/api/transactions/analyze \
-  -H "Authorization: Bearer <TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "customer_id":"CUST001",
-    "amount":500000,
-    "transaction_id":"TXN123",
-    "merchant_category":"Supermarket"
-  }'
-
-# Get fraud statistics
-curl -X GET http://localhost:5000/api/statistics/fraud \
-  -H "Authorization: Bearer <TOKEN>"
-```
+There is no automated test suite yet; `pytest` is listed in `requirements.txt`, but no tests are committed.
 
 ---
 
-## 🎯 SYSTEM CAPABILITIES
+## Live deployment
 
-### Real-Time Detection (Theme 2)
-- **Sub-100ms processing** per transaction
-- **Stream processing** for continuous monitoring
-- **Adaptive thresholding** based on fraud patterns
-- **Concept drift detection** for model performance
-- **Multiple detection stages** (SQL → ML → Ensemble)
+| Service | URL |
+|---|---|
+| Admin dashboard | [fraud-detection-dashboard-gp35.onrender.com](https://fraud-detection-dashboard-gp35.onrender.com) |
+| API | [fraud-detection-api-865q.onrender.com](https://fraud-detection-api-865q.onrender.com) |
 
-### Advanced ML (Theme 3)
-- **5 ML algorithms** working together
-- **Ensemble voting** for robust predictions
-- **Feature importance** analysis
-- **Handling class imbalance** with ADASYN
-- **Hyperparameter tuning** for optimization
-- **99%+ accuracy** on test data
-
-### Data Mining & Anomaly Detection (Theme 4)
-- **Statistical anomaly detection** (MAD method)
-- **Behavioral profiling** of customers
-- **Merchant pattern analysis**
-- **Velocity and frequency checks**
-- **Geographic anomaly detection**
-- **Isolation-based outlier detection**
-
-### SQL Query Optimization (Theme 5)
-- **Indexed database queries** for speed
-- **Customer profile caching**
-- **Recent transaction retrieval**
-- **Pre-filtering** before ML computation
-- **Multi-stage detection pipeline**
-
-### Challenge Handling (Theme 6)
-- **Concept drift detection** and alerting
-- **Adaptive thresholding** for changing patterns
-- **Class imbalance handling** with ADASYN
-- **False positive management**
-- **Privacy-aware processing**
-
-### Business Impact (Theme 7)
-- **ROI calculation** and financial metrics
-- **Fraud loss prevention** quantification
-- **Cost-benefit analysis**
-- **Executive reporting**
-- **Performance metrics** tracking
-- **Risk profiling** by customer
+Hosted on Render's free tier with a Neon PostgreSQL database. Log in with `admin` / `admin`. The free services sleep after 15 minutes idle, and the first request afterwards is slow because the service restarts and retrains the model (about a minute). This deployment is a demonstration of the application-tier design on the proxy dataset; its latency has not been measured.
 
 ---
 
-## 📈 PERFORMANCE METRICS
+## API
 
-### Processing Performance
-- **Throughput**: 500-1000 transactions/second
-- **Latency**: 50-100ms per transaction
-- **Accuracy**: 95-99% fraud detection
-- **AUC Score**: 0.95+ on test data
-- **System Uptime**: 99.8%+
+| Endpoint | Purpose |
+|---|---|
+| `POST /api/auth/login` | Get a token (demo credentials) |
+| `POST /api/transactions/analyze` | Score one transaction |
+| `POST /api/transactions/batch-analyze` | Score up to 500 transactions, synchronously |
+| `GET /api/transactions/recent` | Recent transactions, optionally filtered by decision |
+| `GET /api/transactions/sample` | A real dataset row to try |
+| `GET /api/statistics/fraud`, `/api/statistics/patterns` | Summary statistics |
+| `GET /api/customers/<id>/risk-profile` | A customer's recent history |
+| `GET /api/metrics/roi`, `/api/reports/executive-summary` | Illustrative business figures (see below) |
+| `GET /api/health` | Health check |
 
-### Detection Metrics
-- **Fraud Detection Rate**: 95%+
-- **False Positive Rate**: <2%
-- **Precision**: 92%+
-- **Recall**: 90%+
-- **F1 Score**: 0.91+
-
----
-
-## 🇺🇬 UGANDA BANKING CONTEXT
-
-The system is specifically designed for Uganda with:
-
-1. **Realistic Uganda Transactions**
-   - Kampala, Wakiso, Jinja, Entebbe locations
-   - Uganda-specific merchants (Supermarket, Mobile Money, etc.)
-   - Uganda Shilling (UGX) currency
-   - Local banking hours and patterns
-
-2. **Developing Economy Considerations**
-   - Cloud-based database options
-   - Open-source software (cost-effective)
-   - Limited infrastructure accommodations
-   - Resource-constrained operation modes
-   - Limited technical staff requirements
-
-3. **Financial Impact (Uganda Context)**
-   - Annual fraud loss: ~89 billion UGX
-   - Fraud cases: ~2,847/year
-   - ROI calculation in UGX
-   - Regulatory compliance (Bank of Uganda)
-   - PCI DSS compliance support
+Limits are 200 requests a day and 50 an hour per address by default, with lower limits on some routes.
 
 ---
 
-## 📚 DOCUMENTATION STRUCTURE
+## Limitations
 
-```
-├── fraud_detection_system.py        # Main system
-├── database_module.py                # Database operations
-├── advanced_ml_models.py             # ML algorithms
-├── transaction_processor.py           # Feature extraction
-├── advanced_streaming.py              # Real-time processing
-├── api_server.py                     # REST API
-├── analytics.py                      # Business analytics
-├── requirements.txt                  # Dependencies
-├── README.md                         # This file
-└── uganda_fraud_detection_results.json # Output results
-```
+- **Proxy data.** European card transactions from 2013 with anonymised features; no Ugandan data, no customer history features, and explanations of the anonymised features cannot be interpreted.
+- **Small evidence base.** 75 frauds in the test split; one machine; three runs per configuration.
+- **Not tested:** concept drift, whether explanations help analysts, behaviour on a bank's real systems, and the latency of the deployed service.
+- **Illustrative figures.** The ROI and executive-summary endpoints are computed from cost assumptions written into `analytics.py` (for example an assumed implementation cost and a per-case "reputation benefit"). They are not measurements and should not be used as evidence.
+- **Rule checks are unevaluated and use fictional customers.** The prototype combines the model score with simple rules (amount against the customer's average, transaction frequency, hour of day). The customer profiles behind those rules are ten fictional customers with fixed values, because the dataset has no customer identifiers. Only the model has been evaluated against fraud labels; the rules and the final decision labels (`BLOCK`, `REVIEW`, `MONITOR`, `ALLOW`) have not.
+- **Security.** This is a demo and should not be deployed as it stands. The login is hard-coded, a default signing key is used if `SECRET_KEY` is not set, and the dashboard does not escape transaction and customer ids before showing them (a stored cross-site scripting weakness that the public login makes reachable by anyone). Error details are returned to callers, and in-database scoring loads a model from a pickle file inside the database server. All thirteen known weaknesses, what is already in place and the fixes are in section 7 of `SYSTEM_SUMMARY.md`.
 
 ---
 
-## 🔐 SECURITY FEATURES
+## Documents
 
-- JWT authentication for API
-- Input validation on all endpoints
-- Rate limiting (200/day, 50/hour)
-- Secure database connections
-- Encrypted sensitive data
-- CORS protection
-- SQL injection prevention
-- Audit logging for all transactions
-
----
-
-## 🎓 LEARNING RESOURCES
-
-### Key Themes Demonstrated
-
-**Theme 1: Database Infrastructure**
-- Relational database design
-- Query optimization
-- Indexing strategies
-- Real-time data retrieval
-
-**Theme 2: Real-Time Detection**
-- Stream processing
-- Sliding window analysis
-- Adaptive thresholding
-- Sub-second latency
-
-**Theme 3: Machine Learning**
-- Ensemble methods
-- Feature engineering
-- Hyperparameter tuning
-- Class imbalance handling
-
-**Theme 4: Data Mining**
-- Behavioral analysis
-- Anomaly detection
-- Pattern recognition
-- Customer profiling
-
-**Theme 5: SQL Optimization**
-- Query optimization
-- Index creation
-- Multi-stage filtering
-- Performance tuning
-
-**Theme 6: Challenges**
-- Concept drift detection
-- False positive management
-- Adversarial robustness
-- Privacy preservation
-
-**Theme 7: Business Impact**
-- ROI calculation
-- Financial metrics
-- Executive reporting
-- Performance tracking
+| Document | Contents |
+|---|---|
+| `docs/Concept_Note_v2.docx` | The research proposal |
+| `docs/Literature_Review.docx` | Seven themes, 35 journal articles read and appraised |
+| `docs/Methodology.docx` | Design science methodology, data, experiments and results so far |
+| `docs/literature/notes/` | Search logs and reading notes behind the review |
+| `docs/interview_guide.md` | Guide for a practitioner conversation |
+| `SYSTEM_SUMMARY.md` | Technical description of the system and the benchmarks |
+| `data/README.md` | Dataset provenance and why it was chosen |
 
 ---
 
-## 🤝 EXTENDING THE SYSTEM
-
-### Add New Features
-```python
-# In fraud_detection_system.py
-def add_custom_detection(self, transaction):
-    """Add your custom detection logic"""
-    pass
-```
-
-### Add New ML Models
-```python
-# In advanced_ml_models.py
-def train_custom_model(self):
-    """Train custom model"""
-    self.models['custom'] = CustomModel()
-```
-
-### Add API Endpoints
-```python
-# In api_server.py
-@self.app.route('/api/custom/endpoint', methods=['POST'])
-def custom_endpoint():
-    """Custom endpoint"""
-    pass
-```
-
----
-
-## 📞 SUPPORT & TROUBLESHOOTING
-
-### Common Issues
-
-**Issue: Import errors**
-```bash
-Solution: pip install -r requirements.txt
-```
-
-**Issue: GPU not detected**
-```bash
-Solution: XGBoost will automatically fall back to CPU
-```
-
-**Issue: SQLite database locked**
-```bash
-Solution: Delete fraud_detection.db and restart
-```
-
----
-
-## 📝 LICENSE & ATTRIBUTION
-
-This prototype is designed for educational and research purposes at ISBAT University.
-
-**Key Technologies Used:**
-- XGBoost, LightGBM, Scikit-learn (Machine Learning)
-- Flask (Web Framework)
-- SQLite (Database)
-- NumPy, Pandas (Data Processing)
-
----
-
-## 🎯 CONCLUSION
-
-This **COMPLEX FRAUD DETECTION SYSTEM** demonstrates enterprise-grade implementation combining:
-- Advanced machine learning (5+ algorithms)
-- Real-time stream processing
-- Sophisticated database optimization
-- Comprehensive business analytics
-- Production-ready API
-
-All designed specifically for Uganda's banking sector context.
-
----
-
-**Version**: 2.0 (Complex/Enterprise-Grade)
-**Last Updated**: 2026
-**Status**: Production-Ready Prototype
+Built with Python, scikit-learn, XGBoost, LightGBM, imbalanced-learn, Flask and PostgreSQL. Educational and research use at ISBAT University.
