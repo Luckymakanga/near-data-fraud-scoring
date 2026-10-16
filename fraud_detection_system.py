@@ -20,6 +20,7 @@ from pathlib import Path
 
 # Import custom modules
 from database_module import DatabaseManager
+from validation import validate_transaction
 from advanced_ml_models import AdvancedFraudDetectionModel
 from transaction_processor import TransactionProcessor
 from analytics import FraudAnalytics
@@ -243,9 +244,8 @@ class FraudDetectionSystem:
             return 'ALLOW'
     
     def _validate_transaction(self, transaction):
-        """Validate transaction data"""
-        required_fields = ['customer_id', 'amount', 'transaction_id']
-        return all(field in transaction for field in required_fields)
+        """Validate transaction data (same rules as the API)"""
+        return validate_transaction(transaction) is None
     
     def generate_report(self):
         """Generate comprehensive fraud detection report (Theme 7: Business Impact)"""

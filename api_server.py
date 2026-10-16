@@ -26,8 +26,13 @@ from flask_limiter.util import get_remote_address
 import json
 from datetime import datetime, timedelta
 from functools import wraps
+import hmac
+import uuid
 import jwt
 import logging
+from werkzeug.security import check_password_hash
+
+from validation import ID_RULE, valid_id, validate_transaction
 
 # Configure logging
 logging.basicConfig(
@@ -41,71 +46,125 @@ class FraudDetectionAPI:
     Advanced API server for fraud detection system
     Provides RESTful endpoints for fraud detection and monitoring
     """
-    
+
     def __init__(self, fraud_detection_system, port=5000, debug=False):
         """Initialize API server"""
         self.app = Flask(__name__)
-        self.app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'uganda-fraud-detection-secret-key')
+        self.app.config['SECRET_KEY'] = self._load_secret_key(debug)
         CORS(self.app)
-        
+
         self.system = fraud_detection_system
         self.port = port
         self.debug = debug
-        
+        self._load_admin_credentials()
+
         # Rate limiting
         self.limiter = Limiter(
             app=self.app,
             key_func=get_remote_address,
             default_limits=["200 per day", "50 per hour"]
         )
-        
+
         # Setup routes
         self._setup_routes()
-        
+
         logger.info("Fraud Detection API initialized")
-    
+
+    @staticmethod
+    def _load_secret_key(debug):
+        """The token-signing key comes from SECRET_KEY. There is no built-in default
+        outside debug mode: a key written in the source code would let anyone who
+        has read it forge tokens."""
+        secret_key = os.environ.get('SECRET_KEY')
+        if secret_key:
+            return secret_key
+        if debug:
+            logger.warning("SECRET_KEY is not set; using a development-only key (debug mode)")
+            return 'development-only-key-not-for-production'
+        raise RuntimeError(
+            "SECRET_KEY is not set. Set it in the environment or in .env, for example: "
+            "python -c \"import secrets; print(secrets.token_hex(32))\""
+        )
+
+    def _load_admin_credentials(self):
+        """Admin login from the environment: ADMIN_USERNAME (default 'admin') and either
+        ADMIN_PASSWORD_HASH (a Werkzeug password hash, preferred) or ADMIN_PASSWORD.
+        If neither password variable is set, the public demo password is used and a
+        warning is logged."""
+        self.admin_username = os.environ.get('ADMIN_USERNAME', 'admin')
+        self.admin_password_hash = os.environ.get('ADMIN_PASSWORD_HASH')
+        self.admin_password = os.environ.get('ADMIN_PASSWORD')
+        if not self.admin_password_hash and not self.admin_password:
+            self.admin_password = 'admin'
+            logger.warning(
+                "ADMIN_PASSWORD / ADMIN_PASSWORD_HASH are not set: the public demo password "
+                "is in use. Set one of them for any real deployment."
+            )
+
+    def _credentials_ok(self, username, password):
+        """Constant-time comparison of the supplied login with the configured one"""
+        user_ok = hmac.compare_digest(username.encode('utf-8'), self.admin_username.encode('utf-8'))
+        if self.admin_password_hash:
+            password_ok = check_password_hash(self.admin_password_hash, password)
+        else:
+            password_ok = hmac.compare_digest(password.encode('utf-8'), self.admin_password.encode('utf-8'))
+        return user_ok and password_ok
+
+    @staticmethod
+    def _server_error(context, exc):
+        """A generic 500. The detail goes to the log with a short reference the
+        caller can quote, never to the caller (it could reveal internals)."""
+        error_id = uuid.uuid4().hex[:8]
+        logger.error("[%s] %s failed: %s", error_id, context, exc, exc_info=True)
+        return jsonify({'error': 'Internal server error', 'error_id': error_id}), 500
+
     def _token_required(self, f):
         """Decorator for JWT token authentication"""
         @wraps(f)
         def decorated(*args, **kwargs):
             token = request.headers.get('Authorization', '').replace('Bearer ', '')
-            
+
             if not token:
                 return jsonify({'error': 'Missing authentication token'}), 401
-            
+
             try:
                 data = jwt.decode(token, self.app.config['SECRET_KEY'], algorithms=['HS256'])
             except jwt.ExpiredSignatureError:
                 return jsonify({'error': 'Token expired'}), 401
             except jwt.InvalidTokenError:
                 return jsonify({'error': 'Invalid token'}), 401
-            
+
             return f(*args, **kwargs)
-        
+
         return decorated
-    
+
     def _setup_routes(self):
         """Setup all API routes"""
-        
+
         # Authentication endpoints
         @self.app.route('/api/auth/login', methods=['POST'])
+        @self.limiter.limit("10 per minute")
         def login():
             """Login and get JWT token"""
-            data = request.get_json()
+            data = request.get_json(silent=True)
+            if not isinstance(data, dict):
+                return jsonify({'error': 'Request body must be JSON'}), 400
+
             username = data.get('username')
             password = data.get('password')
-            
-            # Simple authentication (in production, use database)
-            if username == 'admin' and password == 'admin':
+            if not isinstance(username, str) or not isinstance(password, str):
+                return jsonify({'error': 'username and password must be text'}), 400
+
+            if self._credentials_ok(username, password):
                 token = jwt.encode({
                     'username': username,
                     'exp': datetime.utcnow() + timedelta(hours=24)
                 }, self.app.config['SECRET_KEY'], algorithm='HS256')
-                
+
                 return jsonify({'token': token, 'message': 'Login successful'}), 200
-            
+
             return jsonify({'error': 'Invalid credentials'}), 401
-        
+
         # Transaction detection endpoints
         @self.app.route('/api/transactions/analyze', methods=['POST'])
         @self.limiter.limit("100 per hour")
@@ -113,26 +172,26 @@ class FraudDetectionAPI:
         def analyze_transaction():
             """Analyze single transaction for fraud"""
             try:
-                transaction_data = request.get_json()
-                
-                # Validate transaction
-                required_fields = ['customer_id', 'amount', 'transaction_id']
-                if not all(f in transaction_data for f in required_fields):
-                    return jsonify({'error': 'Missing required fields'}), 400
-                
+                transaction_data = request.get_json(silent=True)
+
+                # Validate transaction (ids are restricted to a plain character set)
+                problem = validate_transaction(transaction_data)
+                if problem:
+                    return jsonify({'error': problem}), 400
+
                 # Process transaction
                 result = self.system.process_transaction(transaction_data)
-                
+
                 return jsonify({
                     'status': 'success',
                     'result': result,
                     'timestamp': datetime.now().isoformat()
                 }), 200
-                
+
             except Exception as e:
                 logger.error(f"Error analyzing transaction: {str(e)}")
-                return jsonify({'error': str(e)}), 500
-        
+                return self._server_error('analyze_transaction', e)
+
         # Batch analysis endpoint
         @self.app.route('/api/transactions/batch-analyze', methods=['POST'])
         @self.limiter.limit("20 per hour")
@@ -145,10 +204,10 @@ class FraudDetectionAPI:
             rather than failing the whole batch.
             """
             try:
-                data = request.get_json()
-                transactions = data.get('transactions', [])
+                data = request.get_json(silent=True)
+                transactions = data.get('transactions', []) if isinstance(data, dict) else []
 
-                if not transactions:
+                if not isinstance(transactions, list) or not transactions:
                     return jsonify({'error': 'No transactions provided'}), 400
 
                 if len(transactions) > 500:
@@ -158,8 +217,9 @@ class FraudDetectionAPI:
                 errors = []
 
                 for i, txn in enumerate(transactions):
-                    if not all(f in txn for f in ('customer_id', 'amount', 'transaction_id')):
-                        errors.append({'index': i, 'error': 'Missing customer_id, amount, or transaction_id'})
+                    problem = validate_transaction(txn)
+                    if problem:
+                        errors.append({'index': i, 'error': problem})
                         continue
                     results.append(self.system.process_transaction(txn))
 
@@ -179,7 +239,7 @@ class FraudDetectionAPI:
 
             except Exception as e:
                 logger.error(f"Error in batch analysis: {str(e)}")
-                return jsonify({'error': str(e)}), 500
+                return self._server_error('batch_analyze', e)
 
         # Recent transactions (for admin/dashboard views)
         @self.app.route('/api/transactions/recent', methods=['GET'])
@@ -207,7 +267,7 @@ class FraudDetectionAPI:
 
             except Exception as e:
                 logger.error(f"Error fetching recent transactions: {str(e)}")
-                return jsonify({'error': str(e)}), 500
+                return self._server_error('get_recent_transactions', e)
 
         # Sample a real transaction from the training dataset (for the
         # Analyze form - its predictive features are anonymized PCA
@@ -230,7 +290,7 @@ class FraudDetectionAPI:
 
             except Exception as e:
                 logger.error(f"Error sampling transaction: {str(e)}")
-                return jsonify({'error': str(e)}), 500
+                return self._server_error('get_sample_transaction', e)
 
         # Statistics endpoints
         @self.app.route('/api/statistics/fraud', methods=['GET'])
@@ -240,16 +300,16 @@ class FraudDetectionAPI:
             """Get current fraud statistics"""
             try:
                 stats = self.system.analytics.get_fraud_statistics()
-                
+
                 return jsonify({
                     'status': 'success',
                     'statistics': stats,
                     'timestamp': datetime.now().isoformat()
                 }), 200
-                
+
             except Exception as e:
-                return jsonify({'error': str(e)}), 500
-        
+                return self._server_error('get_fraud_stats', e)
+
         # Fraud patterns endpoint
         @self.app.route('/api/statistics/patterns', methods=['GET'])
         @self.limiter.limit("100 per hour")
@@ -258,35 +318,37 @@ class FraudDetectionAPI:
             """Get fraud patterns"""
             try:
                 patterns = self.system.analytics.get_fraud_patterns()
-                
+
                 return jsonify({
                     'status': 'success',
                     'patterns': patterns,
                     'timestamp': datetime.now().isoformat()
                 }), 200
-                
+
             except Exception as e:
-                return jsonify({'error': str(e)}), 500
-        
+                return self._server_error('get_patterns', e)
+
         # Customer risk profile
         @self.app.route('/api/customers/<customer_id>/risk-profile', methods=['GET'])
         @self.limiter.limit("200 per hour")
         @self._token_required
         def get_customer_risk(customer_id):
             """Get customer risk profile"""
+            if not valid_id(customer_id):
+                return jsonify({'error': f'customer_id {ID_RULE}'}), 400
             try:
                 profile = self.system.db_manager.get_customer_profile(customer_id)
-                
+
                 return jsonify({
                     'status': 'success',
                     'customer_id': customer_id,
                     'profile': profile,
                     'timestamp': datetime.now().isoformat()
                 }), 200
-                
+
             except Exception as e:
-                return jsonify({'error': str(e)}), 500
-        
+                return self._server_error('get_customer_risk', e)
+
         # ROI metrics
         @self.app.route('/api/metrics/roi', methods=['GET'])
         @self.limiter.limit("50 per hour")
@@ -295,16 +357,16 @@ class FraudDetectionAPI:
             """Get ROI metrics"""
             try:
                 roi = self.system.analytics.get_roi_metrics()
-                
+
                 return jsonify({
                     'status': 'success',
                     'roi_metrics': roi,
                     'timestamp': datetime.now().isoformat()
                 }), 200
-                
+
             except Exception as e:
-                return jsonify({'error': str(e)}), 500
-        
+                return self._server_error('get_roi', e)
+
         # Executive summary
         @self.app.route('/api/reports/executive-summary', methods=['GET'])
         @self.limiter.limit("50 per hour")
@@ -313,16 +375,16 @@ class FraudDetectionAPI:
             """Get executive summary"""
             try:
                 summary = self.system.analytics.generate_executive_summary()
-                
+
                 return jsonify({
                     'status': 'success',
                     'summary': summary,
                     'timestamp': datetime.now().isoformat()
                 }), 200
-                
+
             except Exception as e:
-                return jsonify({'error': str(e)}), 500
-        
+                return self._server_error('executive_summary', e)
+
         # Health check
         @self.app.route('/api/health', methods=['GET'])
         def health_check():
@@ -333,17 +395,17 @@ class FraudDetectionAPI:
                 'service': 'Fraud Detection System',
                 'version': '2.0'
             }), 200
-        
+
         # Error handlers
         @self.app.errorhandler(404)
         def not_found(error):
             return jsonify({'error': 'Endpoint not found'}), 404
-        
+
         @self.app.errorhandler(500)
         def internal_error(error):
             logger.error(f"Internal server error: {error}")
             return jsonify({'error': 'Internal server error'}), 500
-    
+
     def run(self):
         """Start the API server using Flask's own dev server (local use only)"""
         logger.info(f"Starting Fraud Detection API on port {self.port}")
