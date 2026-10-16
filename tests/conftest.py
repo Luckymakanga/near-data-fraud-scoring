@@ -62,12 +62,13 @@ class StubSystem:
     def setup_system(self):
         return []
 
-    def process_transaction(self, txn):
+    def process_transaction(self, txn, explain=False):
         self.processed.append(txn)
-        return {
+        result = {
             'transaction_id': txn['transaction_id'], 'customer_id': txn['customer_id'],
             'amount': txn['amount'], 'fraud_score': 0.1, 'is_fraud': False, 'decision': 'ALLOW',
         }
+        return result
 
 
 _stub_module = types.ModuleType('fraud_detection_system')

@@ -81,6 +81,10 @@
       </form>
       <div class="sample-preview" id="samplePreview" hidden></div>
       <div class="analyze-result" id="analyzeResult" hidden></div>
+      <details class="explain-box" id="analyzeExplainBox" hidden open>
+        <summary>Show how this score was made</summary>
+        <div id="analyzeExplain"></div>
+      </details>
     </section>
 
     <section class="panel">
@@ -176,6 +180,7 @@
   <div class="toast" id="toast"></div>
 
   <script src="config.js"></script>
+  <script src="explain.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

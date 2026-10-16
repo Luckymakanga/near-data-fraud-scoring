@@ -73,7 +73,7 @@ The model's inputs are: time of day, the 28 components, and the amount. The same
 - Scaling: a robust scaler fitted on the training split only.
 - Class imbalance: ADASYN oversampling applied to the training split only, after the split.
 - Models: XGBoost and LightGBM (200 trees each), a soft-voting pair of those two, and an Isolation Forest (200 trees) anomaly score. A One-Class SVM is also trained, but it does not contribute to the score.
-- Score: a weighted average of XGBoost (0.35), LightGBM (0.35), Isolation Forest (0.15) and the voting pair (0.15), clipped to the range 0 to 1. A transaction counts as fraud above 0.5.
+- Score: a weighted average of XGBoost (0.35), LightGBM (0.35), Isolation Forest (0.15) and the voting pair (0.15), clipped to the range 0 to 1. A transaction counts as fraud above 0.5. `explain_score` returns the same score together with each model's own score, weight and contribution; it shares its code with `score_batch`, so the two cannot differ (checked bit-for-bit on the saved model).
 - The pickled model is about 5.8 MB.
 
 ### 3.4 Rule checks and decisions (`fraud_detection_system.py`)
@@ -88,7 +88,7 @@ Three simple rules run alongside the model:
 
 The customer averages and usual-hours rates these rules compare against come from the ten fictional seeded customers, and "hour of day" is derived from the dataset's elapsed-seconds column, so it is an artificial clock. The rules therefore demonstrate a stage of the pipeline; they are not a model of real customer behaviour.
 
-The decision is `BLOCK` if three rules fire, or the model says fraud and at least one rule fires; `REVIEW` if two rules fire or the score exceeds 0.7; `MONITOR` if the model says fraud or the score exceeds 0.5; otherwise `ALLOW`. **Only the model's score has been evaluated against fraud labels. These rules and decision labels have not.**
+The decision is `BLOCK` if three rules fire, or the model says fraud and at least one rule fires; `REVIEW` if two rules fire or the score exceeds 0.7; `MONITOR` if the model says fraud or the score exceeds 0.5; otherwise `ALLOW`. **Only the model's score has been evaluated against fraud labels. These rules and decision labels have not.** Each rule reports the figures it compared and the decision reports which condition produced it (`_evaluate_rules`, `_decide`); the dashboard uses these to show how a result arose. They change no flag or decision, and a test compares `_decide` with the original logic for every combination.
 
 ### 3.5 Storage (`database_module.py`)
 
@@ -103,7 +103,7 @@ PostgreSQL through a connection pool, configured by `DATABASE_URL` or the `PG*` 
 
 ### 3.6 API (`api_server.py`)
 
-Token-based login (24-hour tokens signed with `SECRET_KEY`, which is required), cross-origin access enabled, default limits of 200 requests a day and 50 an hour per address with lower limits on some routes (login: 10 attempts a minute). Login credentials come from `ADMIN_USERNAME` and `ADMIN_PASSWORD_HASH` or `ADMIN_PASSWORD`, defaulting to the public demo password with a logged warning. Transactions are validated before scoring (`validation.py`): ids are 1 to 64 letters, digits, hyphens or underscores and the amount is a number from 0 to 1,000,000,000,000. Server errors return a generic message with a short reference id; the detail goes to the log. Endpoints: login; `analyze` (one transaction); `batch-analyze` (up to 500, scored synchronously, bad rows reported and skipped); `recent` (filterable by decision); `sample`; `statistics/fraud` and `statistics/patterns`; `customers/<id>/risk-profile`; `metrics/roi`; `reports/executive-summary`; `research/results` (login required; returns a condensed form of the four files in `results/`, built by `results_summary.py`); `health`.
+Token-based login (24-hour tokens signed with `SECRET_KEY`, which is required), cross-origin access enabled, default limits of 200 requests a day and 50 an hour per address with lower limits on some routes (login: 10 attempts a minute). Login credentials come from `ADMIN_USERNAME` and `ADMIN_PASSWORD_HASH` or `ADMIN_PASSWORD`, defaulting to the public demo password with a logged warning. Transactions are validated before scoring (`validation.py`): ids are 1 to 64 letters, digits, hyphens or underscores and the amount is a number from 0 to 1,000,000,000,000. Server errors return a generic message with a short reference id; the detail goes to the log. Endpoints: login; `analyze` (one transaction, returned with an `explanation` of the score, rules and decision that is not stored);  `batch-analyze` (up to 500, scored synchronously, bad rows reported and skipped); `recent` (filterable by decision); `sample`; `statistics/fraud` and `statistics/patterns`; `customers/<id>/risk-profile`; `metrics/roi`; `reports/executive-summary`; `research/results` (login required; returns a condensed form of the four files in `results/`, built by `results_summary.py`); `health`.
 
 ### 3.7 Analytics (`analytics.py`)
 
@@ -111,7 +111,7 @@ Fraud statistics, simple pattern counts and customer risk profiles are computed 
 
 ### 3.8 Dashboard and simulator (`admin-dashboard/`, `live_simulator.py`)
 
-The dashboard is a static page: login, summary statistics, loading a real dataset row and scoring it, CSV upload for batch scoring, customer risk-profile lookup, and a decision filter on recent transactions. A second page, `results.html`, presents the study's measured results (model detection with 95% intervals, the three architectures at a light load, the rate sweep, the network-distance test and a list of caveats). It draws everything from the `research/results` endpoint, so every figure comes from the result files and none is typed into the page; it redirects to the login page without a token. The static pages themselves are public; only the data is behind the login. `live_simulator.py` posts real dataset rows to the API at random 75 to 110 second intervals so the dashboard shows activity; it is run locally, because the hosting tier has no free always-on worker.
+The dashboard is a static page: login, summary statistics, loading a real dataset row and scoring it, CSV upload for batch scoring, customer risk-profile lookup, and a decision filter on recent transactions. After a transaction is analyzed, a "how this score was made" panel (`explain.js`) walks through the four model scores and weights, the three rule checks with the figures they compared, and the reason for the decision. A second page, `results.html`, opens with a plain-language flow of the scoring steps, marking the scoring step that the study moves and where it runs in each architecture, then presents the study's measured results (model detection with 95% intervals, the three architectures at a light load, the rate sweep, the network-distance test and a list of caveats). It draws everything from the `research/results` endpoint, so every figure comes from the result files and none is typed into the page; it redirects to the login page without a token. The static pages themselves are public; only the data is behind the login. `live_simulator.py` posts real dataset rows to the API at random 75 to 110 second intervals so the dashboard shows activity; it is run locally, because the hosting tier has no free always-on worker.
 
 ### 3.9 Removed code
 
@@ -213,7 +213,7 @@ The live demo holds no sensitive data. The transactions are a public anonymised 
 - **Transport.** The hosted API is served over HTTPS by the host.
 - **Token storage.** The dashboard keeps the token in `sessionStorage`, which is cleared when the tab closes.
 - **No unpickling in the service.** The deployed API trains its model at start-up and does not load any pickle file; only the benchmarks do.
-- **Tests.** `tests/test_security.py` (71 tests) covers validation, login, the signing key, error handling and the dashboard's escaping. They fail on the original code (26 of the 71) and pass on the fixed code. `tests/test_results.py` (16 tests) checks the results summary against the result files, the endpoint's login requirement and generic errors, and that the results page builds its content without assigning markup strings.
+- **Tests.** `tests/test_security.py` (71 tests) covers validation, login, the signing key, error handling and the dashboard's escaping. They fail on the original code (26 of the 71) and pass on the fixed code. `tests/test_explain.py` (20 tests) checks that the score breakdown matches the score exactly, that the decision logic is unchanged, and the explanation's API wiring and page code. `tests/test_results.py` (16 tests) checks the results summary against the result files, the endpoint's login requirement and generic errors, and that the results page builds its content without assigning markup strings.
 - **The latency relay** used in the network test listens on the local machine only.
 
 ### 7.3 Known weaknesses

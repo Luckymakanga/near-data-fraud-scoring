@@ -177,7 +177,7 @@ class TestErrors:
     def test_server_errors_do_not_leak_details_but_are_logged_with_a_reference(self, client, auth, system, caplog):
         secret_detail = 'connection to server at "10.1.2.3" failed: password authentication failed for user "fraud_app"'
 
-        def explode(_txn):
+        def explode(_txn, explain=False):
             raise RuntimeError(secret_detail)
         system.process_transaction = explode
 
