@@ -112,7 +112,7 @@ python benchmark_db.py stop
 
 Timing results are only meaningful on a quiet machine: close other programs first. The sweep and the network test check the machine's load and can wait for it to settle (`--wait-quiet`).
 
-**Tests.** `python -m pytest tests` runs 87 tests: 71 of the API's security behaviour (input validation, login, the signing key, error handling and the dashboard's output escaping) and 16 of the results page's data and endpoint. They use a stand-in for the fraud system, so they need neither the database nor the trained model. The model, the scoring and the benchmarks have no automated tests.
+**Tests.** `python -m pytest tests` runs 107 tests: 71 of the API's security behaviour (input validation, login, the signing key, error handling and the dashboard's output escaping), 16 of the results page's data and endpoint, and 20 of the score explanation (it must match the score exactly and change no decision). They use a stand-in for the fraud system, so they need neither the database nor the trained model. The model, the scoring and the benchmarks have no automated tests.
 
 ---
 

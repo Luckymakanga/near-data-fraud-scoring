@@ -41,6 +41,8 @@ const el = {
   analyzeBtn: document.getElementById("analyzeBtn"),
   samplePreview: document.getElementById("samplePreview"),
   analyzeResult: document.getElementById("analyzeResult"),
+  analyzeExplainBox: document.getElementById("analyzeExplainBox"),
+  analyzeExplain: document.getElementById("analyzeExplain"),
 
   autoRefresh: document.getElementById("autoRefresh"),
   filterPills: document.getElementById("filterPills"),
@@ -374,6 +376,7 @@ let currentSampleLabel = null;
 
 el.loadSampleBtn.addEventListener("click", async () => {
   el.analyzeResult.hidden = true;
+  el.analyzeExplainBox.hidden = true;
   el.samplePreview.hidden = false;
   el.samplePreview.textContent = "Loading a random transaction…";
   el.analyzeBtn.disabled = true;
@@ -403,6 +406,7 @@ el.analyzeForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   if (!currentSample) return;
   el.analyzeResult.hidden = true;
+  el.analyzeExplainBox.hidden = true;
 
   const body = { ...currentSample, customer_id: el.aCustomer.value };
   delete body.timestamp;
@@ -427,6 +431,10 @@ el.analyzeForm.addEventListener("submit", async (e) => {
         .join(", ") || "none"}
     `;
     el.analyzeResult.hidden = false;
+
+    const explanation = window.renderExplanation ? window.renderExplanation(result) : null;
+    el.analyzeExplain.replaceChildren(...(explanation ? [explanation] : []));
+    el.analyzeExplainBox.hidden = !explanation;
 
     currentSample = null;
     currentSampleLabel = null;

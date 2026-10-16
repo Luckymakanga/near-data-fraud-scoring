@@ -197,11 +197,12 @@ class AdvancedFraudDetectionModel:
 
         self.is_trained = True
 
-    def score_batch(self, features):
-        """
-        Ensemble fraud score for each row of a 2-D array of raw (unscaled)
-        feature vectors: the weighted average of the individual models.
-        """
+    # Share of the final score taken from each model. The One-Class SVM is
+    # trained but has no weight, so it does not contribute.
+    ENSEMBLE_WEIGHTS = {'xgb': 0.35, 'lgb': 0.35, 'iso': 0.15, 'voting': 0.15}
+
+    def _component_scores(self, features):
+        """Each model's own score (0 to 1) for every row of raw feature vectors"""
         features_scaled = self.scaler.transform(features)
 
         predictions = {}
@@ -223,8 +224,11 @@ class AdvancedFraudDetectionModel:
         if 'voting_ensemble' in self.models:
             predictions['voting'] = self.models['voting_ensemble'].predict_proba(features_scaled)[:, 1]
 
-        # Weighted average
-        weights = {'xgb': 0.35, 'lgb': 0.35, 'iso': 0.15, 'voting': 0.15}
+        return predictions
+
+    def _combine(self, predictions):
+        """Weighted average of the model scores, kept between 0 and 1"""
+        weights = self.ENSEMBLE_WEIGHTS
 
         final_score = sum(predictions[k] * weights[k] for k in predictions)
 
@@ -233,6 +237,44 @@ class AdvancedFraudDetectionModel:
         final_score = final_score / max(total_weight, 1)
 
         return np.clip(final_score, 0, 1)  # Ensure between 0 and 1
+
+    def score_batch(self, features):
+        """
+        Ensemble fraud score for each row of a 2-D array of raw (unscaled)
+        feature vectors: the weighted average of the individual models.
+        """
+        return self._combine(self._component_scores(features))
+
+    def explain_score(self, features):
+        """
+        The score for one transaction together with how it was made: each
+        model's own score, its weight and what it added to the total. The
+        final score comes from the same code as score_batch, so the two
+        always agree. Returns None if the model is not trained.
+        """
+        if not self.is_trained or not self.models:
+            return None
+
+        features = np.asarray(features, dtype=float).reshape(1, -1)
+        predictions = self._component_scores(features)
+        total_weight = sum(self.ENSEMBLE_WEIGHTS[k] for k in predictions)
+
+        components = []
+        for key in self.ENSEMBLE_WEIGHTS:
+            if key in predictions:
+                score = float(predictions[key][0])
+                weight = self.ENSEMBLE_WEIGHTS[key]
+                components.append({
+                    'model': key,
+                    'score': score,
+                    'weight': weight / max(total_weight, 1),
+                    'contribution': score * weight / max(total_weight, 1),
+                })
+
+        return {
+            'components': components,
+            'final_score': float(self._combine(predictions)[0]),
+        }
 
     def predict_fraud_advanced(self, features):
         """

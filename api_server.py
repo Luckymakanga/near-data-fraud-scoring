@@ -181,7 +181,7 @@ class FraudDetectionAPI:
                     return jsonify({'error': problem}), 400
 
                 # Process transaction
-                result = self.system.process_transaction(transaction_data)
+                result = self.system.process_transaction(transaction_data, explain=True)
 
                 return jsonify({
                     'status': 'success',

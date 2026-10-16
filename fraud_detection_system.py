@@ -83,7 +83,7 @@ class FraudDetectionSystem:
         
         return sample_transactions
     
-    def process_transaction(self, transaction_data):
+    def process_transaction(self, transaction_data, explain=False):
         """
         Process a single transaction in real-time
         
@@ -93,6 +93,8 @@ class FraudDetectionSystem:
         
         Args:
             transaction_data: Dictionary with transaction details
+            explain: also return how the score and decision were reached
+                (each model's score, the rule inputs, the decision path)
             
         Returns:
             Dictionary with fraud detection results
@@ -106,7 +108,7 @@ class FraudDetectionSystem:
         customer_profile = self.db_manager.get_customer_profile(customer_id)
         
         # Perform SQL-based pre-filtering (Theme 5)
-        sql_flags = self._perform_sql_filtering(transaction_data, customer_profile)
+        sql_flags, rule_details = self._evaluate_rules(transaction_data, customer_profile)
         
         # Prepare features for ML model (Theme 3)
         features = self.transaction_processor.extract_features(
@@ -116,11 +118,15 @@ class FraudDetectionSystem:
         
         # Get ML fraud prediction (Theme 3: Machine Learning)
         # Cast to native Python types - numpy.float64/numpy.bool_ aren't JSON serializable
-        fraud_probability = float(self.ml_model.predict_fraud_advanced(features))
+        score_breakdown = self.ml_model.explain_score(features) if explain else None
+        if score_breakdown:
+            fraud_probability = float(score_breakdown['final_score'])
+        else:
+            fraud_probability = float(self.ml_model.predict_fraud_advanced(features))
         is_fraud = bool(fraud_probability > 0.5)
         
         # Combine SQL flags and ML prediction (Theme 6: Handling Challenges)
-        final_decision = self._combine_detections(sql_flags, is_fraud, fraud_probability)
+        final_decision, decision_reason = self._decide(sql_flags, is_fraud, fraud_probability)
         
         # Store results in database
         result = {
@@ -138,6 +144,14 @@ class FraudDetectionSystem:
         
         # Log transaction
         self.db_manager.log_transaction(result)
+
+        # The explanation is for the caller only; it is not stored
+        if explain:
+            result = dict(result, explanation={
+                'models': score_breakdown,
+                'rules': rule_details,
+                'decision_reason': decision_reason,
+            })
         
         # If fraud detected, take action
         if is_fraud or final_decision == 'BLOCK':
@@ -197,6 +211,13 @@ class FraudDetectionSystem:
         Uses database queries to identify obvious fraud patterns
         before expensive ML computation
         """
+        return self._evaluate_rules(transaction, customer_profile)[0]
+
+    def _evaluate_rules(self, transaction, customer_profile):
+        """
+        The three rule checks. Returns the flags and, for each rule, the
+        figures it compared, so the dashboard can show how a flag arose.
+        """
         flags = {
             'threshold_exceeded': False,
             'velocity_anomaly': False,
@@ -204,7 +225,8 @@ class FraudDetectionSystem:
         }
 
         # Check 1: Amount threshold (SQL optimization: indexed queries)
-        if transaction['amount'] > customer_profile['avg_transaction'] * 5:
+        amount_limit = customer_profile['avg_transaction'] * 5
+        if transaction['amount'] > amount_limit:
             flags['threshold_exceeded'] = True
 
         # Check 2: Velocity anomaly (unusual transaction frequency)
@@ -212,7 +234,8 @@ class FraudDetectionSystem:
             transaction['customer_id'],
             minutes=60
         )
-        if len(recent_transactions) > 10:  # More than 10 in an hour is unusual
+        recent_count = len(recent_transactions)
+        if recent_count > 10:  # More than 10 in an hour is unusual
             flags['velocity_anomaly'] = True
 
         # Check 3: Unusual time ('Time' is seconds elapsed since the
@@ -220,28 +243,50 @@ class FraudDetectionSystem:
         # a rough time-of-day)
         seconds = transaction.get('Time', 0) or 0
         hour = int((seconds % 86400) // 3600)
-        if hour < 6 or hour > 22:  # Outside banking hours
-            if customer_profile['unusual_hours_frequency'] < 0.1:
-                flags['unusual_time'] = True
+        usual_rate = customer_profile['unusual_hours_frequency']
+        outside_hours = hour < 6 or hour > 22  # Outside banking hours
+        if outside_hours and usual_rate < 0.1:
+            flags['unusual_time'] = True
 
-        return flags
-    
+        details = {
+            'threshold_exceeded': {
+                'amount': float(transaction['amount']),
+                'customer_average': float(customer_profile['avg_transaction']),
+                'limit': float(amount_limit),
+            },
+            'velocity_anomaly': {'recent_count': recent_count, 'limit': 10},
+            'unusual_time': {
+                'hour': hour,
+                'outside_hours': outside_hours,
+                'customer_night_rate': float(usual_rate),
+                'rate_limit': 0.1,
+            },
+        }
+        return flags, details
+
     def _combine_detections(self, sql_flags, ml_fraud, fraud_probability):
         """
         Combine SQL-based and ML detections for final decision (Theme 6)
         
         Uses ensemble approach combining multiple detection methods
         """
+        return self._decide(sql_flags, ml_fraud, fraud_probability)[0]
+
+    def _decide(self, sql_flags, ml_fraud, fraud_probability):
+        """The decision and, in words, which condition produced it"""
         sql_flag_count = sum(1 for v in sql_flags.values() if v)
         
-        if sql_flag_count >= 3 or (ml_fraud and sql_flag_count >= 1):
-            return 'BLOCK'
-        elif sql_flag_count >= 2 or fraud_probability > 0.7:
-            return 'REVIEW'
-        elif ml_fraud or fraud_probability > 0.5:
-            return 'MONITOR'
-        else:
-            return 'ALLOW'
+        if sql_flag_count >= 3:
+            return 'BLOCK', 'All three rule checks fired.'
+        if ml_fraud and sql_flag_count >= 1:
+            return 'BLOCK', 'The model scored the transaction above 0.5 and at least one rule check fired.'
+        if sql_flag_count >= 2:
+            return 'REVIEW', 'Two rule checks fired.'
+        if fraud_probability > 0.7:
+            return 'REVIEW', 'The model scored the transaction above 0.7.'
+        if ml_fraud or fraud_probability > 0.5:
+            return 'MONITOR', 'The model scored the transaction above 0.5, but no rule check fired.'
+        return 'ALLOW', 'The score is at or below 0.5 and fewer than two rule checks fired.'
     
     def _validate_transaction(self, transaction):
         """Validate transaction data (same rules as the API)"""

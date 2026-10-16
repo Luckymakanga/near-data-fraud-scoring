@@ -27,6 +27,28 @@
       <p class="results-status" id="status">Loading the results&hellip;</p>
     </section>
 
+    <section class="panel" id="pipelinePanel">
+      <h2>How a transaction is scored</h2>
+      <p class="panel-hint">The prototype takes each transaction through the steps below. The three highlighted steps are the <strong>scoring</strong>, which is the part the study moves between architectures. The rule checks and the decision are not part of the benchmarks.</p>
+      <ol class="flow">
+        <li class="flow-step"><strong>Transaction arrives</strong><span>The amount, the time and 28 anonymized components, for a named customer.</span></li>
+        <li class="flow-step"><strong>Customer history is read</strong><span>Average amount, night-time habit and the last hour's activity, from the database.</span></li>
+        <li class="flow-step"><strong>Three rule checks</strong><span>Unusually large amount, too many transactions in an hour, unusual time of day.</span></li>
+        <li class="flow-step moves"><strong>Thirty features are built</strong><span>Time of day, the 28 components and the amount.</span></li>
+        <li class="flow-step moves"><strong>Four models score it</strong><span>XGBoost, LightGBM, a voting pair of those two, and an Isolation Forest.</span></li>
+        <li class="flow-step moves"><strong>Weighted average</strong><span>35%, 35%, 15% and 15% give one fraud score from 0 to 1.</span></li>
+        <li class="flow-step"><strong>Decision</strong><span>Block, review, monitor or allow, from the score and the rule checks together.</span></li>
+        <li class="flow-step"><strong>Saved</strong><span>The transaction, its score and decision are stored in the database.</span></li>
+      </ol>
+      <h3 class="subhead">Where the scoring step runs in each architecture</h3>
+      <div class="where-grid">
+        <div class="where-card" style="--swatch: var(--yellow)"><strong>External batch</strong><span>The transaction is saved unscored. A separate job checks every 10 seconds, reads the new rows out of the database, scores them and writes the scores back.</span></div>
+        <div class="where-card" style="--swatch: var(--blue)"><strong>In-database</strong><span>A trigger inside the database scores each row as it is saved, so the data never leaves it.</span></div>
+        <div class="where-card" style="--swatch: var(--accent)"><strong>Application tier</strong><span>The application scores the transaction first, then saves it with its score. The live demo works this way.</span></div>
+      </div>
+      <p class="table-note">All three use the same model and the same feature code, so only the place the scoring runs differs. To see the steps for one real transaction, use &ldquo;Analyze a Transaction&rdquo; on the dashboard.</p>
+    </section>
+
     <section class="panel" id="detectionPanel" hidden>
       <h2>1. How well does the model detect fraud?</h2>
       <p class="panel-hint" id="detectionHint"></p>
