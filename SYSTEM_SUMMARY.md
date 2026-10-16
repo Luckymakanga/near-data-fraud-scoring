@@ -103,7 +103,7 @@ PostgreSQL through a connection pool, configured by `DATABASE_URL` or the `PG*` 
 
 ### 3.6 API (`api_server.py`)
 
-Token-based login (24-hour tokens signed with `SECRET_KEY`, which is required), cross-origin access enabled, default limits of 200 requests a day and 50 an hour per address with lower limits on some routes (login: 10 attempts a minute). Login credentials come from `ADMIN_USERNAME` and `ADMIN_PASSWORD_HASH` or `ADMIN_PASSWORD`, defaulting to the public demo password with a logged warning. Transactions are validated before scoring (`validation.py`): ids are 1 to 64 letters, digits, hyphens or underscores and the amount is a number from 0 to 1,000,000,000,000. Server errors return a generic message with a short reference id; the detail goes to the log. Endpoints: login; `analyze` (one transaction); `batch-analyze` (up to 500, scored synchronously, bad rows reported and skipped); `recent` (filterable by decision); `sample`; `statistics/fraud` and `statistics/patterns`; `customers/<id>/risk-profile`; `metrics/roi`; `reports/executive-summary`; `health`.
+Token-based login (24-hour tokens signed with `SECRET_KEY`, which is required), cross-origin access enabled, default limits of 200 requests a day and 50 an hour per address with lower limits on some routes (login: 10 attempts a minute). Login credentials come from `ADMIN_USERNAME` and `ADMIN_PASSWORD_HASH` or `ADMIN_PASSWORD`, defaulting to the public demo password with a logged warning. Transactions are validated before scoring (`validation.py`): ids are 1 to 64 letters, digits, hyphens or underscores and the amount is a number from 0 to 1,000,000,000,000. Server errors return a generic message with a short reference id; the detail goes to the log. Endpoints: login; `analyze` (one transaction); `batch-analyze` (up to 500, scored synchronously, bad rows reported and skipped); `recent` (filterable by decision); `sample`; `statistics/fraud` and `statistics/patterns`; `customers/<id>/risk-profile`; `metrics/roi`; `reports/executive-summary`; `research/results` (login required; returns a condensed form of the four files in `results/`, built by `results_summary.py`); `health`.
 
 ### 3.7 Analytics (`analytics.py`)
 
@@ -111,7 +111,7 @@ Fraud statistics, simple pattern counts and customer risk profiles are computed 
 
 ### 3.8 Dashboard and simulator (`admin-dashboard/`, `live_simulator.py`)
 
-The dashboard is a static page: login, summary statistics, loading a real dataset row and scoring it, CSV upload for batch scoring, customer risk-profile lookup, and a decision filter on recent transactions. `live_simulator.py` posts real dataset rows to the API at random 75 to 110 second intervals so the dashboard shows activity; it is run locally, because the hosting tier has no free always-on worker.
+The dashboard is a static page: login, summary statistics, loading a real dataset row and scoring it, CSV upload for batch scoring, customer risk-profile lookup, and a decision filter on recent transactions. A second page, `results.html`, presents the study's measured results (model detection with 95% intervals, the three architectures at a light load, the rate sweep, the network-distance test and a list of caveats). It draws everything from the `research/results` endpoint, so every figure comes from the result files and none is typed into the page; it redirects to the login page without a token. The static pages themselves are public; only the data is behind the login. `live_simulator.py` posts real dataset rows to the API at random 75 to 110 second intervals so the dashboard shows activity; it is run locally, because the hosting tier has no free always-on worker.
 
 ### 3.9 Removed code
 
@@ -213,7 +213,7 @@ The live demo holds no sensitive data. The transactions are a public anonymised 
 - **Transport.** The hosted API is served over HTTPS by the host.
 - **Token storage.** The dashboard keeps the token in `sessionStorage`, which is cleared when the tab closes.
 - **No unpickling in the service.** The deployed API trains its model at start-up and does not load any pickle file; only the benchmarks do.
-- **Tests.** `tests/test_security.py` (71 tests) covers validation, login, the signing key, error handling and the dashboard's escaping. They fail on the original code (26 of the 71) and pass on the fixed code.
+- **Tests.** `tests/test_security.py` (71 tests) covers validation, login, the signing key, error handling and the dashboard's escaping. They fail on the original code (26 of the 71) and pass on the fixed code. `tests/test_results.py` (16 tests) checks the results summary against the result files, the endpoint's login requirement and generic errors, and that the results page builds its content without assigning markup strings.
 - **The latency relay** used in the network test listens on the local machine only.
 
 ### 7.3 Known weaknesses

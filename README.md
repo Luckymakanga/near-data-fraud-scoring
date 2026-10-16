@@ -64,7 +64,8 @@ Scores were identical in all three architectures in every run.
 | `database_module.py` | PostgreSQL storage |
 | `analytics.py` | Statistics, patterns, customer risk profiles (its ROI figures are illustrative; see below) |
 | `live_simulator.py` | Posts real dataset rows to the API at random intervals so a dashboard looks live |
-| `admin-dashboard/` | Static web dashboard |
+| `admin-dashboard/` | Static web dashboard, including `results.html`, a page presenting the study's measured results |
+| `results_summary.py` | Condenses the files in `results/` for that page (served at `/api/research/results`, login required) |
 
 **Other:** `data/` (the dataset sample and its provenance), `docs/` (concept note, literature review, methodology, interview guide, reading notes), `render.yaml` and `Procfile` (deployment).
 
@@ -111,7 +112,7 @@ python benchmark_db.py stop
 
 Timing results are only meaningful on a quiet machine: close other programs first. The sweep and the network test check the machine's load and can wait for it to settle (`--wait-quiet`).
 
-**Tests.** `python -m pytest tests` runs 71 tests of the API's security behaviour (input validation, login, the signing key, error handling and the dashboard's output escaping). They use a stand-in for the fraud system, so they need neither the database nor the trained model. The model, the scoring and the benchmarks have no automated tests.
+**Tests.** `python -m pytest tests` runs 87 tests: 71 of the API's security behaviour (input validation, login, the signing key, error handling and the dashboard's output escaping) and 16 of the results page's data and endpoint. They use a stand-in for the fraud system, so they need neither the database nor the trained model. The model, the scoring and the benchmarks have no automated tests.
 
 ---
 
