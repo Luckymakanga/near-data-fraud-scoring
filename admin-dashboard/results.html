@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Research Results - Fraud Detection</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div class="dashboard" id="page">
+    <header class="topbar">
+      <div class="brand">
+        <h1>Research results</h1>
+        <span class="brand-sub">Where should fraud scoring run? Measured results of the study</span>
+      </div>
+      <div class="topbar-right">
+        <a class="btn ghost nav-link" href="index.html">Dashboard</a>
+        <button class="btn ghost" id="logoutBtn" type="button">Logout</button>
+      </div>
+    </header>
+
+    <section class="panel" id="introPanel">
+      <h2>What this page shows</h2>
+      <p class="panel-hint">The study compares three ways of scoring transactions for fraud with the same model: an <strong>external batch</strong> job that polls the database, scoring <strong>inside the database</strong> as each row is stored, and scoring in the <strong>application tier</strong> (the design this live demo uses). Every figure below comes from the study's benchmark scripts and result files; none is measured on this dashboard or on the live server.</p>
+      <p class="panel-hint">Decision latency is the time from a transaction&rsquo;s scheduled arrival to the moment its fraud score is saved, so waiting in a queue counts. The data are a public dataset of European card transactions used as a stand-in; they say nothing about fraud rates in Uganda.</p>
+      <p class="results-status" id="status">Loading the results&hellip;</p>
+    </section>
+
+    <section class="panel" id="detectionPanel" hidden>
+      <h2>1. How well does the model detect fraud?</h2>
+      <p class="panel-hint" id="detectionHint"></p>
+      <div class="metrics-grid" id="detectionCards"></div>
+    </section>
+
+    <section class="panel" id="baselinePanel" hidden>
+      <h2>2. The three architectures at a light load</h2>
+      <p class="panel-hint" id="baselineHint"></p>
+      <div class="table-wrap" id="baselineTable"></div>
+    </section>
+
+    <section class="panel" id="sweepPanel" hidden>
+      <div class="panel-header">
+        <h2>3. What happens as the load rises?</h2>
+        <div class="pill-row" id="connectionPills" role="group" aria-label="Number of connections"></div>
+      </div>
+      <p class="panel-hint" id="sweepHint"></p>
+      <div class="chart-wrap" id="sweepChart"></div>
+      <div class="legend" id="sweepLegend"></div>
+      <div class="table-wrap" id="sweepTable"></div>
+      <h3 class="subhead">Memory and processor cost as connections are added (80 transactions per second)</h3>
+      <div class="table-wrap" id="costTable"></div>
+    </section>
+
+    <section class="panel" id="networkPanel" hidden>
+      <h2>4. Does distance between the application and the database matter?</h2>
+      <p class="panel-hint" id="networkHint"></p>
+      <div class="chart-wrap" id="networkChart"></div>
+      <div class="legend" id="networkLegend"></div>
+      <div class="table-wrap" id="networkTable"></div>
+    </section>
+
+    <section class="panel" id="notesPanel" hidden>
+      <h2>Read these figures with care</h2>
+      <ul class="note-list" id="notesList"></ul>
+    </section>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="results.js"></script>
+</body>
+</html>

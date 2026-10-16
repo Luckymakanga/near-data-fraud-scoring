@@ -32,6 +32,7 @@ import jwt
 import logging
 from werkzeug.security import check_password_hash
 
+from results_summary import build_summary
 from validation import ID_RULE, valid_id, validate_transaction
 
 # Configure logging
@@ -384,6 +385,21 @@ class FraudDetectionAPI:
 
             except Exception as e:
                 return self._server_error('executive_summary', e)
+
+        # The study's measured results, for the dashboard's research page
+        @self.app.route('/api/research/results', methods=['GET'])
+        @self.limiter.limit("60 per hour")
+        @self._token_required
+        def research_results():
+            """Condensed results of the architecture benchmarks (read from results/)"""
+            try:
+                return jsonify({
+                    'status': 'success',
+                    'results': build_summary(),
+                    'timestamp': datetime.now().isoformat()
+                }), 200
+            except Exception as e:
+                return self._server_error('research_results', e)
 
         # Health check
         @self.app.route('/api/health', methods=['GET'])
