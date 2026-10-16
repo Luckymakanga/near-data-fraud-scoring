@@ -8,6 +8,14 @@ const API_BASE = window.FRAUD_API_BASE ||
 
 const TOKEN_KEY = "fraudAdmin.token";
 
+// Escape anything that came from the API (or a file) before it goes into HTML.
+// Transaction and customer ids are stored from API callers, so they are untrusted.
+function esc(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[c]));
+}
+
 const el = {
   loginScreen: document.getElementById("loginScreen"),
   loginForm: document.getElementById("loginForm"),
@@ -204,7 +212,7 @@ async function loadStats() {
 function fmtTime(iso) {
   if (!iso) return "–";
   const d = new Date(iso);
-  if (isNaN(d)) return iso;
+  if (isNaN(d)) return esc(iso);
   return d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
@@ -242,12 +250,12 @@ async function loadTransactions() {
 
   el.txTableBody.innerHTML = transactions
     .map((tx) => {
-      const decision = tx.decision || "—";
-      const customerId = tx.customer_id ?? "";
+      const decision = esc(tx.decision || "—");
+      const customerId = esc(tx.customer_id ?? "");
       return `
         <tr>
           <td>${fmtTime(tx.timestamp)}</td>
-          <td><code>${tx.transaction_id ?? "–"}</code></td>
+          <td><code>${esc(tx.transaction_id ?? "–")}</code></td>
           <td>${customerId ? `<button type="button" class="customer-link" data-customer="${customerId}">${customerId}</button>` : "–"}</td>
           <td>${fmtTimeOfDay(tx.txn_time)}</td>
           <td>${fmtAmount(tx.amount)}</td>
@@ -289,7 +297,7 @@ async function loadPatterns() {
 
   el.patternList.innerHTML = patterns
     .slice(0, 5)
-    .map((p) => `<li><span>${p.pattern}</span><span class="pattern-count">${p.count} cases</span></li>`)
+    .map((p) => `<li><span>${esc(p.pattern)}</span><span class="pattern-count">${esc(p.count)} cases</span></li>`)
     .join("");
 }
 
@@ -314,17 +322,17 @@ async function lookupCustomer(customerId) {
       return;
     }
 
-    const risk = profile.risk_level || "NORMAL";
+    const risk = esc(profile.risk_level || "NORMAL");
     const decisions = profile.recent_decisions && profile.recent_decisions.length
-      ? profile.recent_decisions.map((d) => `<span class="merchant-chip badge decision-${d}">${d}</span>`).join("")
+      ? profile.recent_decisions.map((d) => `<span class="merchant-chip badge decision-${esc(d)}">${esc(d)}</span>`).join("")
       : `<span class="merchant-chip">none yet</span>`;
 
     el.profileCard.className = "profile-card";
     el.profileCard.innerHTML = `
       <div class="profile-head">
         <div>
-          <h3>${profile.name}</h3>
-          <span class="profile-id">${profile.customer_id} &middot; ${profile.account_type || "–"}</span>
+          <h3>${esc(profile.name)}</h3>
+          <span class="profile-id">${esc(profile.customer_id)} &middot; ${esc(profile.account_type || "–")}</span>
         </div>
         <span class="risk-badge risk-${risk}">${risk}</span>
       </div>
@@ -335,7 +343,7 @@ async function lookupCustomer(customerId) {
         </div>
         <div class="profile-field">
           <span class="field-label">Last Location</span>
-          <span class="field-value">${profile.last_location || "–"}</span>
+          <span class="field-value">${esc(profile.last_location || "–")}</span>
         </div>
         <div class="profile-field">
           <span class="field-label">Unusual Hours Freq.</span>
@@ -376,7 +384,7 @@ el.loadSampleBtn.addEventListener("click", async () => {
     currentSampleLabel = true_label;
 
     el.samplePreview.innerHTML = `
-      Loaded <code>${transaction.transaction_id}</code> &mdash;
+      Loaded <code>${esc(transaction.transaction_id)}</code> &mdash;
       amount ${fmtAmount(transaction.amount)}, time-of-day ${fmtTimeOfDay(transaction.Time)}.
       Pick a customer, then Analyze to see the model's verdict.
     `;
@@ -406,16 +414,16 @@ el.analyzeForm.addEventListener("submit", async (e) => {
     });
 
     const matchNote = currentSampleLabel
-      ? ` (actual label: <strong>${currentSampleLabel}</strong>)`
+      ? ` (actual label: <strong>${esc(currentSampleLabel)}</strong>)`
       : "";
 
-    el.analyzeResult.className = `analyze-result decision-${result.decision}`;
+    el.analyzeResult.className = `analyze-result decision-${esc(result.decision)}`;
     el.analyzeResult.innerHTML = `
-      <strong>${result.decision}</strong> — fraud score ${fmtScore(result.fraud_score)}
-      for <code>${result.transaction_id}</code> (${result.customer_id}, ${fmtAmount(result.amount)})${matchNote}<br/>
+      <strong>${esc(result.decision)}</strong> — fraud score ${fmtScore(result.fraud_score)}
+      for <code>${esc(result.transaction_id)}</code> (${esc(result.customer_id)}, ${fmtAmount(result.amount)})${matchNote}<br/>
       Flags: ${Object.entries(result.sql_flags || {})
         .filter(([, v]) => v)
-        .map(([k]) => k)
+        .map(([k]) => esc(k))
         .join(", ") || "none"}
     `;
     el.analyzeResult.hidden = false;
@@ -507,21 +515,21 @@ el.uploadForm.addEventListener("submit", async (e) => {
     const truncNote = truncated ? ` (first 500 of ${rows.length} rows)` : "";
     const errNote = errors.length ? `, ${errors.length} row${errors.length === 1 ? "" : "s"} skipped` : "";
     el.uploadResult.innerHTML = `
-      Analyzed <strong>${summary.total}</strong> transaction${summary.total === 1 ? "" : "s"}${truncNote}${errNote} &mdash;
-      <strong>${summary.fraud_count}</strong> flagged as fraud (${summary.total ? ((summary.fraud_count / summary.total) * 100).toFixed(1) : 0}%).
+      Analyzed <strong>${esc(summary.total)}</strong> transaction${summary.total === 1 ? "" : "s"}${truncNote}${errNote} &mdash;
+      <strong>${esc(summary.fraud_count)}</strong> flagged as fraud (${summary.total ? ((summary.fraud_count / summary.total) * 100).toFixed(1) : 0}%).
     `;
 
     el.uploadTableBody.innerHTML = results
       .map((r) => {
-        const decision = r.decision || "—";
+        const decision = esc(r.decision || "—");
         const actual = trueLabels.get(r.transaction_id);
         const actualCell = actual
           ? `<span class="badge decision-${actual === "FRAUD" ? "BLOCK" : "ALLOW"}">${actual}</span>`
           : "–";
         return `
           <tr>
-            <td><code>${r.transaction_id ?? "–"}</code></td>
-            <td>${r.customer_id ?? "–"}</td>
+            <td><code>${esc(r.transaction_id ?? "–")}</code></td>
+            <td>${esc(r.customer_id ?? "–")}</td>
             <td>${fmtAmount(r.amount)}</td>
             <td>${fmtScore(r.fraud_score)}</td>
             <td><span class="badge decision-${decision}">${decision}</span></td>

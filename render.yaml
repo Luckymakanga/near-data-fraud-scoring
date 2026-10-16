@@ -16,6 +16,9 @@ services:
         sync: false
       - key: SECRET_KEY
         generateValue: true
+      # Optional, set in the Render dashboard (not here): ADMIN_PASSWORD or
+      # ADMIN_PASSWORD_HASH. Until one is set, the public demo password
+      # "admin" is in use. ADMIN_USERNAME defaults to "admin".
 
   - name: fraud-detection-dashboard
     type: web

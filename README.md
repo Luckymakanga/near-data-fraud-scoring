@@ -6,7 +6,7 @@ A research prototype and benchmark for one question:
 
 It is a project for ISBAT University (course BIT3239). The code builds one fraud model, runs it in three places (an external batch job, inside the database, and in the application tier), and measures how detection quality, decision latency and system cost change with load and with the distance between application and database.
 
-**What this is not.** It is not a production system. It uses a public European card dataset as a proxy, because no bank data was requested or used, so it says nothing about fraud rates or patterns in Uganda. Its login is a demo (`admin` / `admin`). The numbers below come from one laptop.
+**What this is not.** It is not a production system. It uses a public European card dataset as a proxy, because no bank data was requested or used, so it says nothing about fraud rates or patterns in Uganda. Its login uses the public demo password (`admin` / `admin`) unless you set your own. The numbers below come from one laptop.
 
 ---
 
@@ -82,6 +82,8 @@ pip install -r requirements.txt
 
 **Database.** The prototype and benchmarks need PostgreSQL. Copy `.env.example` to `.env` and set either `DATABASE_URL` or the `PG*` variables.
 
+**Security settings.** Set `SECRET_KEY` in `.env`; it signs login tokens and the API refuses to start without it (generate one with `python -c "import secrets; print(secrets.token_hex(32))"`, or run with `FLASK_DEBUG=true` to use a development-only key). To change the admin login, set `ADMIN_PASSWORD_HASH` (preferred) or `ADMIN_PASSWORD`, and optionally `ADMIN_USERNAME`; until you do, the public demo password is used and a warning is logged.
+
 **Detection quality**
 
 ```bash
@@ -109,7 +111,7 @@ python benchmark_db.py stop
 
 Timing results are only meaningful on a quiet machine: close other programs first. The sweep and the network test check the machine's load and can wait for it to settle (`--wait-quiet`).
 
-There is no automated test suite yet; `pytest` is listed in `requirements.txt`, but no tests are committed.
+**Tests.** `python -m pytest tests` runs 71 tests of the API's security behaviour (input validation, login, the signing key, error handling and the dashboard's output escaping). They use a stand-in for the fraud system, so they need neither the database nor the trained model. The model, the scoring and the benchmarks have no automated tests.
 
 ---
 
@@ -120,7 +122,7 @@ There is no automated test suite yet; `pytest` is listed in `requirements.txt`, 
 | Admin dashboard | [fraud-detection-dashboard-gp35.onrender.com](https://fraud-detection-dashboard-gp35.onrender.com) |
 | API | [fraud-detection-api-865q.onrender.com](https://fraud-detection-api-865q.onrender.com) |
 
-Hosted on Render's free tier with a Neon PostgreSQL database. Log in with `admin` / `admin`. The free services sleep after 15 minutes idle, and the first request afterwards is slow because the service restarts and retrains the model (about a minute). This deployment is a demonstration of the application-tier design on the proxy dataset; its latency has not been measured.
+Hosted on Render's free tier with a Neon PostgreSQL database. Log in with `admin` / `admin` (the public demo password; set `ADMIN_PASSWORD_HASH` or `ADMIN_PASSWORD` in Render's dashboard to change it). The free services sleep after 15 minutes idle, and the first request afterwards is slow because the service restarts and retrains the model (about a minute). This deployment is a demonstration of the application-tier design on the proxy dataset; its latency has not been measured.
 
 ---
 
@@ -128,7 +130,7 @@ Hosted on Render's free tier with a Neon PostgreSQL database. Log in with `admin
 
 | Endpoint | Purpose |
 |---|---|
-| `POST /api/auth/login` | Get a token (demo credentials) |
+| `POST /api/auth/login` | Get a token (demo password unless you set your own); limited to 10 attempts a minute |
 | `POST /api/transactions/analyze` | Score one transaction |
 | `POST /api/transactions/batch-analyze` | Score up to 500 transactions, synchronously |
 | `GET /api/transactions/recent` | Recent transactions, optionally filtered by decision |
@@ -149,7 +151,7 @@ Limits are 200 requests a day and 50 an hour per address by default, with lower 
 - **Not tested:** concept drift, whether explanations help analysts, behaviour on a bank's real systems, and the latency of the deployed service.
 - **Illustrative figures.** The ROI and executive-summary endpoints are computed from cost assumptions written into `analytics.py` (for example an assumed implementation cost and a per-case "reputation benefit"). They are not measurements and should not be used as evidence.
 - **Rule checks are unevaluated and use fictional customers.** The prototype combines the model score with simple rules (amount against the customer's average, transaction frequency, hour of day). The customer profiles behind those rules are ten fictional customers with fixed values, because the dataset has no customer identifiers. Only the model has been evaluated against fraud labels; the rules and the final decision labels (`BLOCK`, `REVIEW`, `MONITOR`, `ALLOW`) have not.
-- **Security.** This is a demo and should not be deployed as it stands. The login is hard-coded, a default signing key is used if `SECRET_KEY` is not set, and the dashboard does not escape transaction and customer ids before showing them (a stored cross-site scripting weakness that the public login makes reachable by anyone). Error details are returned to callers, and in-database scoring loads a model from a pickle file inside the database server. All thirteen known weaknesses, what is already in place and the fixes are in section 7 of `SYSTEM_SUMMARY.md`.
+- **Security.** This is a demo and should not be deployed as it stands. The latest changes fixed the most serious findings of a code review: transaction and customer ids are validated by the server and escaped by the dashboard (closing a stored cross-site scripting weakness), the API no longer has a built-in signing key, the admin login comes from the environment and is rate limited, and server errors no longer reveal internal details. Still open: one shared admin account with the public demo password until you set your own (the live demo is in this state), cross-origin access open to every site, rate limits that may not work correctly behind a proxy, no audit trail, unpinned dependencies, and in-database scoring that loads a model from a pickle file inside the database server. All thirteen findings, what is fixed and what is not are in section 7 of `SYSTEM_SUMMARY.md`.
 
 ---
 
