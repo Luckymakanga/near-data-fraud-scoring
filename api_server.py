@@ -19,6 +19,7 @@ if hasattr(sys.stdout, 'reconfigure'):
     sys.stderr.reconfigure(encoding='utf-8')
 
 import os
+import ipaddress
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_limiter import Limiter
@@ -59,10 +60,11 @@ class FraudDetectionAPI:
         self.debug = debug
         self._load_admin_credentials()
 
-        # Rate limiting
+        # Rate limiting, counted per visitor (see _client_address)
+        self.client_ip_header = self._client_ip_header_setting()
         self.limiter = Limiter(
             app=self.app,
-            key_func=get_remote_address,
+            key_func=self._client_address,
             default_limits=["200 per day", "50 per hour"]
         )
 
@@ -70,6 +72,34 @@ class FraudDetectionAPI:
         self._setup_routes()
 
         logger.info("Fraud Detection API initialized")
+
+    @staticmethod
+    def _client_ip_header_setting():
+        """Name of the request header that carries the real visitor's address, or None.
+
+        Behind a hosting proxy every request reaches the service from the proxy's own
+        address, so counting limits by that address makes all visitors share one limit.
+        The host's edge puts the visitor's address in a header, and the service may read
+        it only where the edge is known to set it, because anywhere else a caller could
+        write any value into the header and dodge the limits. It is therefore off by
+        default. Render sets RENDER=true, and its edge is Cloudflare, which sets
+        CF-Connecting-IP; CLIENT_IP_HEADER names another header, or empty to turn it off."""
+        configured = os.environ.get('CLIENT_IP_HEADER')
+        if configured is not None:
+            return configured.strip() or None
+        if os.environ.get('RENDER', '').lower() == 'true':
+            return 'CF-Connecting-IP'
+        return None
+
+    def _client_address(self):
+        """The address a request's limits are counted against"""
+        if self.client_ip_header:
+            value = request.headers.get(self.client_ip_header, '').strip()
+            try:
+                return str(ipaddress.ip_address(value))
+            except ValueError:
+                pass  # missing or not an address: fall back to the connecting address
+        return get_remote_address()
 
     @staticmethod
     def _load_secret_key(debug):
@@ -403,6 +433,7 @@ class FraudDetectionAPI:
 
         # Health check
         @self.app.route('/api/health', methods=['GET'])
+        @self.limiter.exempt
         def health_check():
             """API health check"""
             return jsonify({

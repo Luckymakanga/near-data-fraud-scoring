@@ -19,7 +19,7 @@ sys.path.insert(0, str(ROOT))
 
 TEST_SECRET = 'test-secret-key-used-only-by-the-test-suite'
 os.environ['SECRET_KEY'] = TEST_SECRET
-for name in ('ADMIN_USERNAME', 'ADMIN_PASSWORD', 'ADMIN_PASSWORD_HASH', 'FLASK_DEBUG'):
+for name in ('ADMIN_USERNAME', 'ADMIN_PASSWORD', 'ADMIN_PASSWORD_HASH', 'FLASK_DEBUG', 'CLIENT_IP_HEADER', 'RENDER'):
     os.environ.pop(name, None)
 
 
