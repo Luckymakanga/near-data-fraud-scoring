@@ -251,9 +251,9 @@ class TestApi:
         calls = []
         original = system.process_transaction
 
-        def record(txn, explain=False):
+        def record(txn, explain=False, batch=None):
             calls.append(explain)
-            return original(txn, explain)
+            return original(txn, explain, batch)
 
         system.process_transaction = record
         txn = {'transaction_id': 'T1', 'customer_id': 'CUST001', 'amount': 10}

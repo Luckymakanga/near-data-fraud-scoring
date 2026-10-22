@@ -451,6 +451,9 @@ el.analyzeForm.addEventListener("submit", async (e) => {
 
 // ---------- Upload dataset ----------
 
+// Rows sent per request when a file is uploaded (the server accepts up to 500 at once)
+const UPLOAD_CHUNK = 50;
+
 const DEMO_CUSTOMERS = [
   "CUST001", "CUST002", "CUST003", "CUST004", "CUST005",
   "CUST006", "CUST007", "CUST008", "CUST009", "CUST010",
@@ -513,18 +516,54 @@ el.uploadForm.addEventListener("submit", async (e) => {
       return txn;
     });
 
-    el.uploadResult.textContent = `Analyzing ${transactions.length} transaction${transactions.length === 1 ? "" : "s"}…`;
+    // A big file goes up in small chunks. The service scores a row in well under a second but
+    // reads from a database that may be far away, so one 500-row request could run past the
+    // host's time limit and hold up every other request while it ran. Chunks keep each request
+    // short, show progress, and keep what was analyzed if one of them fails.
+    const total = transactions.length;
+    const results = [];
+    const errors = [];
+    let fraudCount = 0;
+    let stoppedEarly = false;
+    let failure = null;
+    const started = Date.now();
 
-    const { results, errors, summary } = await apiFetch("/api/transactions/batch-analyze", {
-      method: "POST",
-      body: JSON.stringify({ transactions }),
-    });
+    for (let offset = 0; offset < total; offset += UPLOAD_CHUNK) {
+      const chunk = transactions.slice(offset, offset + UPLOAD_CHUNK);
+      el.uploadResult.textContent =
+        `Analyzing transactions ${offset + 1} to ${offset + chunk.length} of ${total}… ` +
+        `${results.length} done so far. Please wait and do not upload again.`;
+      try {
+        const data = await apiFetch("/api/transactions/batch-analyze", {
+          method: "POST",
+          body: JSON.stringify({ transactions: chunk }),
+        });
+        results.push(...data.results);
+        data.errors.forEach((e) => errors.push({ ...e, index: e.index + offset }));
+        fraudCount += data.summary.fraud_count;
+        if (data.summary.stopped_early) {
+          stoppedEarly = true;
+          break;
+        }
+      } catch (err) {
+        if (err.message === "Unauthorized") throw err;
+        failure = err.message;
+        break;
+      }
+    }
 
+    const seconds = ((Date.now() - started) / 1000).toFixed(0);
     const truncNote = truncated ? ` (first 500 of ${rows.length} rows)` : "";
     const errNote = errors.length ? `, ${errors.length} row${errors.length === 1 ? "" : "s"} skipped` : "";
+    const problemNote = failure
+      ? `<br/>Stopped after ${results.length} of ${total}: ${esc(failure)}. The ${results.length} analyzed are shown and saved.`
+      : stoppedEarly
+        ? `<br/>Stopped early after repeated errors on the server; ${results.length} of ${total} were analyzed.`
+        : "";
+    el.uploadResult.className = failure || stoppedEarly ? "upload-result error" : "upload-result";
     el.uploadResult.innerHTML = `
-      Analyzed <strong>${esc(summary.total)}</strong> transaction${summary.total === 1 ? "" : "s"}${truncNote}${errNote} &mdash;
-      <strong>${esc(summary.fraud_count)}</strong> flagged as fraud (${summary.total ? ((summary.fraud_count / summary.total) * 100).toFixed(1) : 0}%).
+      Analyzed <strong>${esc(results.length)}</strong> transaction${results.length === 1 ? "" : "s"}${truncNote}${errNote} in ${esc(seconds)} s &mdash;
+      <strong>${esc(fraudCount)}</strong> flagged as fraud (${results.length ? ((fraudCount / results.length) * 100).toFixed(1) : 0}%).${problemNote}
     `;
 
     el.uploadTableBody.innerHTML = results
@@ -547,7 +586,7 @@ el.uploadForm.addEventListener("submit", async (e) => {
       .join("");
     el.uploadTableWrap.hidden = false;
 
-    showToast(`Uploaded dataset analyzed: ${summary.fraud_count}/${summary.total} flagged`);
+    showToast(failure ? "Upload stopped part-way" : `Uploaded dataset analyzed: ${fraudCount}/${results.length} flagged`);
     await Promise.all([loadStats(), loadTransactions()]);
   } catch (err) {
     el.uploadResult.className = "upload-result error";

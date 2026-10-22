@@ -25,6 +25,37 @@ from advanced_ml_models import AdvancedFraudDetectionModel
 from transaction_processor import TransactionProcessor
 from analytics import FraudAnalytics
 
+class BatchContext:
+    """What one batch upload reads once and reuses for every row.
+
+    Scoring a transaction normally reads the customer's profile and counts the
+    customer's transactions in the last hour. For a batch that is the same read
+    for every row of a customer, and each read is a round trip to a database that
+    may be far away. The profile is read once per customer, and the hourly count
+    is read once and then raised as each row of the batch is stored, which is
+    exactly what reading it again would return (for a single writer)."""
+
+    def __init__(self, db_manager):
+        self.db = db_manager
+        self._profiles = {}
+        self._recent = {}
+
+    def profile(self, customer_id):
+        if customer_id not in self._profiles:
+            self._profiles[customer_id] = self.db.get_customer_profile(customer_id)
+        return self._profiles[customer_id]
+
+    def recent_count(self, customer_id):
+        if customer_id not in self._recent:
+            self._recent[customer_id] = len(self.db.get_recent_transactions(customer_id, minutes=60))
+        return self._recent[customer_id]
+
+    def stored(self, customer_id):
+        """A row of this customer has been stored, so the hourly count goes up by one"""
+        if customer_id in self._recent:
+            self._recent[customer_id] += 1
+
+
 class FraudDetectionSystem:
     """
     Complete integrated fraud detection system for Uganda's banking sector
@@ -83,7 +114,11 @@ class FraudDetectionSystem:
         
         return sample_transactions
     
-    def process_transaction(self, transaction_data, explain=False):
+    def start_batch(self):
+        """A context that lets the rows of one batch share their reads"""
+        return BatchContext(self.db_manager)
+
+    def process_transaction(self, transaction_data, explain=False, batch=None):
         """
         Process a single transaction in real-time
         
@@ -95,6 +130,8 @@ class FraudDetectionSystem:
             transaction_data: Dictionary with transaction details
             explain: also return how the score and decision were reached
                 (each model's score, the rule inputs, the decision path)
+            batch: a context from start_batch(), so that the rows of a batch
+                read each customer's profile and hourly count only once
             
         Returns:
             Dictionary with fraud detection results
@@ -105,10 +142,11 @@ class FraudDetectionSystem:
         
         # Get customer profile (Behavioral Analysis - Theme 4)
         customer_id = transaction_data['customer_id']
-        customer_profile = self.db_manager.get_customer_profile(customer_id)
+        customer_profile = batch.profile(customer_id) if batch else self.db_manager.get_customer_profile(customer_id)
         
         # Perform SQL-based pre-filtering (Theme 5)
-        sql_flags, rule_details = self._evaluate_rules(transaction_data, customer_profile)
+        recent_count = batch.recent_count(customer_id) if batch else None
+        sql_flags, rule_details = self._evaluate_rules(transaction_data, customer_profile, recent_count)
         
         # Prepare features for ML model (Theme 3)
         features = self.transaction_processor.extract_features(
@@ -144,6 +182,8 @@ class FraudDetectionSystem:
         
         # Log transaction
         self.db_manager.log_transaction(result)
+        if batch:
+            batch.stored(customer_id)
 
         # The explanation is for the caller only; it is not stored
         if explain:
@@ -213,7 +253,7 @@ class FraudDetectionSystem:
         """
         return self._evaluate_rules(transaction, customer_profile)[0]
 
-    def _evaluate_rules(self, transaction, customer_profile):
+    def _evaluate_rules(self, transaction, customer_profile, recent_count=None):
         """
         The three rule checks. Returns the flags and, for each rule, the
         figures it compared, so the dashboard can show how a flag arose.
@@ -230,11 +270,11 @@ class FraudDetectionSystem:
             flags['threshold_exceeded'] = True
 
         # Check 2: Velocity anomaly (unusual transaction frequency)
-        recent_transactions = self.db_manager.get_recent_transactions(
-            transaction['customer_id'],
-            minutes=60
-        )
-        recent_count = len(recent_transactions)
+        if recent_count is None:
+            recent_count = len(self.db_manager.get_recent_transactions(
+                transaction['customer_id'],
+                minutes=60
+            ))
         if recent_count > 10:  # More than 10 in an hour is unusual
             flags['velocity_anomaly'] = True
 

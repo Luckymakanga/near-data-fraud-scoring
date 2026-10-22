@@ -19,6 +19,7 @@ if hasattr(sys.stdout, 'reconfigure'):
     sys.stderr.reconfigure(encoding='utf-8')
 
 import os
+import time
 import ipaddress
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -142,12 +143,17 @@ class FraudDetectionAPI:
         return user_ok and password_ok
 
     @staticmethod
-    def _server_error(context, exc):
-        """A generic 500. The detail goes to the log with a short reference the
-        caller can quote, never to the caller (it could reveal internals)."""
+    def _log_failure(context, exc):
+        """Log a failure with a short reference the caller can quote; returns the reference"""
         error_id = uuid.uuid4().hex[:8]
         logger.error("[%s] %s failed: %s", error_id, context, exc, exc_info=True)
-        return jsonify({'error': 'Internal server error', 'error_id': error_id}), 500
+        return error_id
+
+    @classmethod
+    def _server_error(cls, context, exc):
+        """A generic 500. The detail goes to the log with a short reference the
+        caller can quote, never to the caller (it could reveal internals)."""
+        return jsonify({'error': 'Internal server error', 'error_id': cls._log_failure(context, exc)}), 500
 
     def _token_required(self, f):
         """Decorator for JWT token authentication"""
@@ -225,7 +231,7 @@ class FraudDetectionAPI:
 
         # Batch analysis endpoint
         @self.app.route('/api/transactions/batch-analyze', methods=['POST'])
-        @self.limiter.limit("20 per hour")
+        @self.limiter.limit("200 per hour")
         @self._token_required
         def batch_analyze():
             """
@@ -246,15 +252,39 @@ class FraudDetectionAPI:
 
                 results = []
                 errors = []
+                started = time.monotonic()
 
+                # The rows of one batch share their reads of each customer's profile and
+                # hourly count, which would otherwise be a round trip per row to a database
+                # that may be far away. Systems without that (test stand-ins) score row by row.
+                start_batch = getattr(self.system, 'start_batch', None)
+                batch = start_batch() if start_batch else None
+
+                consecutive_failures = 0
+                stopped_early = False
                 for i, txn in enumerate(transactions):
                     problem = validate_transaction(txn)
                     if problem:
                         errors.append({'index': i, 'error': problem})
                         continue
-                    results.append(self.system.process_transaction(txn))
+                    try:
+                        result = (self.system.process_transaction(txn, batch=batch) if batch
+                                  else self.system.process_transaction(txn))
+                    except Exception as e:
+                        # one row failing does not cancel the rows already stored; three in a
+                        # row means something systemic (such as the database), so stop
+                        error_id = self._log_failure('batch_analyze row', e)
+                        errors.append({'index': i, 'error': f'Could not be scored (reference {error_id})'})
+                        consecutive_failures += 1
+                        if consecutive_failures >= 3:
+                            stopped_early = True
+                            break
+                        continue
+                    consecutive_failures = 0
+                    results.append(result)
 
                 fraud_count = sum(1 for r in results if r.get('is_fraud'))
+                elapsed = time.monotonic() - started
 
                 return jsonify({
                     'status': 'success',
@@ -263,7 +293,9 @@ class FraudDetectionAPI:
                     'summary': {
                         'total': len(results),
                         'fraud_count': fraud_count,
-                        'skipped': len(errors)
+                        'skipped': len(errors),
+                        'stopped_early': stopped_early,
+                        'elapsed_seconds': round(elapsed, 2),
                     },
                     'timestamp': datetime.now().isoformat()
                 }), 200

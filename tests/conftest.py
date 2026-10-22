@@ -62,8 +62,13 @@ class StubSystem:
     def setup_system(self):
         return []
 
-    def process_transaction(self, txn, explain=False):
+    def start_batch(self):
+        self.batches = getattr(self, 'batches', 0) + 1
+        return object()
+
+    def process_transaction(self, txn, explain=False, batch=None):
         self.processed.append(txn)
+        self.batch_seen = getattr(self, 'batch_seen', []) + [batch]
         result = {
             'transaction_id': txn['transaction_id'], 'customer_id': txn['customer_id'],
             'amount': txn['amount'], 'fraud_score': 0.1, 'is_fraud': False, 'decision': 'ALLOW',

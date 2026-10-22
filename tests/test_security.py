@@ -150,7 +150,7 @@ class TestRoutes:
     def test_batch_skips_bad_rows_and_reports_why(self, client, auth, system):
         batch = [GOOD, {**GOOD, 'transaction_id': XSS_ID}, {**GOOD, 'transaction_id': 'T2', 'amount': 'lots'}, {**GOOD, 'transaction_id': 'T3'}]
         body = client.post('/api/transactions/batch-analyze', json={'transactions': batch}, headers=auth).get_json()
-        assert body['summary'] == {'total': 2, 'fraud_count': 0, 'skipped': 2}
+        assert {k: body['summary'][k] for k in ('total', 'fraud_count', 'skipped')} == {'total': 2, 'fraud_count': 0, 'skipped': 2}
         assert [e['index'] for e in body['errors']] == [1, 2]
         assert [t['transaction_id'] for t in system.processed] == ['TXN4F2A9C1B', 'T3']
 

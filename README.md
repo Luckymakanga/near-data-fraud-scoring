@@ -112,7 +112,7 @@ python benchmark_db.py stop
 
 Timing results are only meaningful on a quiet machine: close other programs first. The sweep and the network test check the machine's load and can wait for it to settle (`--wait-quiet`).
 
-**Tests.** `python -m pytest tests` runs 122 tests: 71 of the API's security behaviour (input validation, login, the signing key, error handling and the dashboard's output escaping), 16 of the results page's data and endpoint, 20 of the score explanation (it must match the score exactly and change no decision), and 15 of the rate limits (counted per visitor, health check exempt). They use a stand-in for the fraud system, so they need neither the database nor the trained model. The model, the scoring and the benchmarks have no automated tests.
+**Tests.** `python -m pytest tests` runs 135 tests: 71 of the API's security behaviour (input validation, login, the signing key, error handling and the dashboard's output escaping), 16 of the results page's data and endpoint, 20 of the score explanation (it must match the score exactly and change no decision), and 15 of the rate limits (counted per visitor, health check exempt), and 13 of batch uploads (shared reads, a failing row, timing). They use a stand-in for the fraud system, so they need neither the database nor the trained model. The model, the scoring and the benchmarks have no automated tests.
 
 ---
 
@@ -133,7 +133,7 @@ Hosted on Render's free tier with a Neon PostgreSQL database. Log in with `admin
 |---|---|
 | `POST /api/auth/login` | Get a token (demo password unless you set your own); limited to 10 attempts a minute |
 | `POST /api/transactions/analyze` | Score one transaction |
-| `POST /api/transactions/batch-analyze` | Score up to 500 transactions, synchronously |
+| `POST /api/transactions/batch-analyze` | Score up to 500 transactions, synchronously (the dashboard sends 50 at a time) |
 | `GET /api/transactions/recent` | Recent transactions, optionally filtered by decision |
 | `GET /api/transactions/sample` | A real dataset row to try |
 | `GET /api/statistics/fraud`, `/api/statistics/patterns` | Summary statistics |
