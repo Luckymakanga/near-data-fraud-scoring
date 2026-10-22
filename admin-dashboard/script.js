@@ -104,6 +104,9 @@ async function apiFetch(path, options = {}) {
   }
 
   const data = await res.json().catch(() => ({}));
+  if (res.status === 429) {
+    throw new Error("Too many requests - please wait a few minutes, then refresh.");
+  }
   if (!res.ok) {
     throw new Error(data.error || `Request failed (${res.status})`);
   }
@@ -130,9 +133,13 @@ function showDashboard() {
   if (el.autoRefresh.checked) startAutoRefresh();
 }
 
+const REFRESH_SECONDS = 30;
+
 function startAutoRefresh() {
   if (refreshTimer) clearInterval(refreshTimer);
-  refreshTimer = setInterval(loadAll, 10000);
+  refreshTimer = setInterval(() => {
+    if (!document.hidden) loadAll();   // a background tab does not need fresh numbers
+  }, REFRESH_SECONDS * 1000);
 }
 
 function stopAutoRefresh() {

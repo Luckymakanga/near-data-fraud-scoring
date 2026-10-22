@@ -78,7 +78,29 @@ class TestHealthCheck:
         assert codes == {200}
 
     def test_other_routes_are_still_limited(self, client, auth):
-        """The statistics route allows 200 an hour; the 201st request is refused"""
-        codes = [client.get('/api/statistics/fraud', headers=auth).status_code for _ in range(205)]
-        assert codes[:200] == [200] * 200
-        assert 429 in codes[200:]
+        """The risk-profile route allows 200 an hour; the 201st request is refused"""
+        codes = [client.get('/api/customers/CUST001/risk-profile', headers=auth).status_code for _ in range(205)]
+        assert 429 in codes[200:] and 429 not in codes[:200]
+
+
+class TestDashboardRefresh:
+    """The open dashboard re-reads three routes on a timer; that must never lock it out"""
+
+    ROUTES = ('/api/transactions/recent', '/api/statistics/fraud', '/api/statistics/patterns')
+
+    def test_an_open_dashboard_is_not_locked_out_for_hours(self, client, auth):
+        for route in self.ROUTES:
+            codes = {client.get(route, headers=auth).status_code for _ in range(300)}
+            assert 429 not in codes, route
+
+    def test_the_old_ten_second_refresh_would_have_hit_the_limit_within_an_hour(self):
+        assert 3600 // 10 > 200 > 3600 // 30      # 360 requests an hour before, 120 now
+
+    @pytest.mark.parametrize('route', ROUTES)
+    def test_the_polled_routes_still_have_a_limit(self, make_api, route):
+        api, _ = make_api()
+        client = api.app.test_client()
+        login = client.post('/api/auth/login', json={'username': 'admin', 'password': 'admin'})
+        auth = {'Authorization': f"Bearer {login.get_json()['token']}"}
+        codes = [client.get(route, headers=auth).status_code for _ in range(605)]
+        assert 429 in codes[600:] and 429 not in codes[:600]

@@ -37,6 +37,10 @@ from werkzeug.security import check_password_hash
 from results_summary import build_summary
 from validation import ID_RULE, valid_id, validate_transaction
 
+# The dashboard re-reads these three routes while it is open (every 30 s, about 120 an hour each
+# per tab); the limit leaves room for several tabs and manual refreshes without locking it out.
+DASHBOARD_REFRESH_LIMIT = "600 per hour"
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -306,7 +310,7 @@ class FraudDetectionAPI:
 
         # Recent transactions (for admin/dashboard views)
         @self.app.route('/api/transactions/recent', methods=['GET'])
-        @self.limiter.limit("200 per hour")
+        @self.limiter.limit(DASHBOARD_REFRESH_LIMIT)
         @self._token_required
         def get_recent_transactions():
             """Get the most recent transactions, newest first. Optional ?decision=BLOCK|REVIEW|MONITOR|ALLOW filters to that outcome."""
@@ -357,7 +361,7 @@ class FraudDetectionAPI:
 
         # Statistics endpoints
         @self.app.route('/api/statistics/fraud', methods=['GET'])
-        @self.limiter.limit("200 per hour")
+        @self.limiter.limit(DASHBOARD_REFRESH_LIMIT)
         @self._token_required
         def get_fraud_stats():
             """Get current fraud statistics"""
@@ -375,7 +379,7 @@ class FraudDetectionAPI:
 
         # Fraud patterns endpoint
         @self.app.route('/api/statistics/patterns', methods=['GET'])
-        @self.limiter.limit("100 per hour")
+        @self.limiter.limit(DASHBOARD_REFRESH_LIMIT)
         @self._token_required
         def get_patterns():
             """Get fraud patterns"""
