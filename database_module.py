@@ -435,6 +435,26 @@ class DatabaseManager:
         finally:
             self._putconn(conn)
 
+    def reset_demo_data(self):
+        """Delete every stored transaction and alert, keeping the customers, in one step.
+
+        Alerts go first because they refer to transactions. Either both tables are cleared or
+        neither is. Returns how many rows were removed from each."""
+        conn = self._getconn()
+        try:
+            cursor = conn.cursor()
+            cursor.execute('DELETE FROM fraud_alerts')
+            alerts = cursor.rowcount
+            cursor.execute('DELETE FROM transactions')
+            transactions = cursor.rowcount
+            conn.commit()
+            return {'transactions': transactions, 'alerts': alerts}
+        except psycopg2.Error:
+            conn.rollback()
+            raise
+        finally:
+            self._putconn(conn)
+
     def close(self):
         """Close all pooled database connections. Safe to call more than once."""
         if getattr(self, 'pool', None) and not self.pool.closed:

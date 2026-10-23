@@ -61,6 +61,11 @@ const el = {
   uploadTableWrap: document.getElementById("uploadTableWrap"),
   uploadTableBody: document.getElementById("uploadTableBody"),
 
+  resetForm: document.getElementById("resetForm"),
+  resetConfirm: document.getElementById("resetConfirm"),
+  resetBtn: document.getElementById("resetBtn"),
+  resetNote: document.getElementById("resetNote"),
+
   toast: document.getElementById("toast"),
 };
 
@@ -610,6 +615,42 @@ el.uploadForm.addEventListener("submit", async (e) => {
     el.uploadResult.textContent = `Error: ${err.message}`;
   } finally {
     el.uploadBtn.disabled = false;
+  }
+});
+
+// ---------- Start a new evaluation session ----------
+
+// The button stays disabled until the word RESET is typed, and the server asks for it again.
+el.resetConfirm.addEventListener("input", () => {
+  el.resetBtn.disabled = el.resetConfirm.value.trim() !== "RESET";
+});
+
+el.resetForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (el.resetConfirm.value.trim() !== "RESET") return;
+  el.resetBtn.disabled = true;
+  el.resetNote.hidden = false;
+  el.resetNote.textContent = "Deleting…";
+  try {
+    const { removed } = await apiFetch("/api/admin/reset-demo-data", {
+      method: "POST",
+      body: JSON.stringify({ confirm: "RESET" }),
+    });
+    // Clear what the page itself still shows from earlier sessions
+    for (const box of [el.uploadResult, el.uploadTableWrap, el.analyzeResult, el.analyzeExplainBox, el.samplePreview, el.profileCard]) {
+      box.hidden = true;
+    }
+    el.uploadTableBody.innerHTML = "";
+    el.uFile.value = "";
+    el.resetConfirm.value = "";
+    el.resetNote.textContent =
+      `Done: ${removed.transactions} transaction${removed.transactions === 1 ? "" : "s"} and ${removed.alerts} alert${removed.alerts === 1 ? "" : "s"} deleted. The dashboard now starts at zero.`;
+    showToast("Dashboard reset for a new session");
+    await loadAll();
+  } catch (err) {
+    if (err.message !== "Unauthorized") el.resetNote.textContent = `Could not delete: ${err.message}`;
+  } finally {
+    el.resetBtn.disabled = el.resetConfirm.value.trim() !== "RESET";
   }
 });
 

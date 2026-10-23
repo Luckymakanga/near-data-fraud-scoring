@@ -114,6 +114,10 @@ class FraudDetectionSystem:
         
         return sample_transactions
     
+    def reset_demo_data(self):
+        """Clear the stored transactions and alerts so a new evaluation session starts at zero"""
+        return self.db_manager.reset_demo_data()
+
     def start_batch(self):
         """A context that lets the rows of one batch share their reads"""
         return BatchContext(self.db_manager)

@@ -21,7 +21,7 @@ if hasattr(sys.stdout, 'reconfigure'):
 import os
 import time
 import ipaddress
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, g
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -175,6 +175,7 @@ class FraudDetectionAPI:
             except jwt.InvalidTokenError:
                 return jsonify({'error': 'Invalid token'}), 401
 
+            g.admin_username = data.get('username')
             return f(*args, **kwargs)
 
         return decorated
@@ -466,6 +467,26 @@ class FraudDetectionAPI:
                 }), 200
             except Exception as e:
                 return self._server_error('research_results', e)
+
+        # Start a new evaluation session from zero
+        @self.app.route('/api/admin/reset-demo-data', methods=['POST'])
+        @self.limiter.limit("10 per hour")
+        @self._token_required
+        def reset_demo_data():
+            """Delete all stored transactions and alerts (customers stay). Needs the word RESET in the body."""
+            if os.environ.get('DEMO_RESET', '').strip().lower() == 'off':
+                return jsonify({'error': 'Resetting is switched off on this server'}), 403
+            data = request.get_json(silent=True)
+            if not isinstance(data, dict) or data.get('confirm') != 'RESET':
+                return jsonify({'error': 'Send {"confirm": "RESET"} to delete all transactions and alerts'}), 400
+            try:
+                removed = self.system.reset_demo_data()
+            except Exception as e:
+                return self._server_error('reset_demo_data', e)
+            logger.warning('Demo data reset by %s: %s transactions and %s alerts removed',
+                           g.get('admin_username'), removed['transactions'], removed['alerts'])
+            return jsonify({'status': 'success', 'removed': removed,
+                            'timestamp': datetime.now().isoformat()}), 200
 
         # Health check
         @self.app.route('/api/health', methods=['GET'])

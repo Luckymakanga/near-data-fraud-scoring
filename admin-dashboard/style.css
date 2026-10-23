@@ -151,7 +151,26 @@ code {
   border: 1px solid var(--border);
 }
 
+.btn.danger {
+  background: var(--red);
+  color: #fff;
+}
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
 .btn.wide { width: 100%; }
+
+.reset-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.reset-form input {
+  font: inherit;
+  flex: 1 1 220px;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+}
+.reset-note { margin: 10px 0 0; font-size: 0.9rem; }
 
 /* ---------- Dashboard shell ---------- */
 

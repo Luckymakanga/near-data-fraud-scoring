@@ -62,6 +62,10 @@ class StubSystem:
     def setup_system(self):
         return []
 
+    def reset_demo_data(self):
+        self.resets = getattr(self, 'resets', 0) + 1
+        return {'transactions': 7, 'alerts': 2}
+
     def start_batch(self):
         self.batches = getattr(self, 'batches', 0) + 1
         return object()

@@ -175,6 +175,16 @@
         <li class="table-empty">Loading&hellip;</li>
       </ul>
     </section>
+
+    <section class="panel" id="resetPanel">
+      <h2>Start a new evaluation session</h2>
+      <p class="panel-hint">Deletes every transaction and fraud alert that has been analyzed, so the dashboard starts again at zero for the next participant. The demo customers stay. This cannot be undone.</p>
+      <form class="reset-form" id="resetForm" autocomplete="off">
+        <input type="text" id="resetConfirm" placeholder="Type RESET to confirm" aria-label="Type RESET to confirm" />
+        <button type="submit" class="btn danger" id="resetBtn" disabled>Delete all transactions</button>
+      </form>
+      <p class="reset-note" id="resetNote" hidden></p>
+    </section>
   </div>
 
   <div class="toast" id="toast"></div>
