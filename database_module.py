@@ -10,6 +10,7 @@ Handles all database operations including:
 """
 
 import os
+import time
 import psycopg2
 from psycopg2 import pool
 from psycopg2.extras import RealDictCursor
@@ -38,9 +39,10 @@ class DatabaseManager:
         priority; otherwise falls back to discrete PGHOST/PGPORT/
         PGDATABASE/PGUSER/PGPASSWORD variables for local dev.
         """
+        self._last_used = {}
         database_url = os.environ.get('DATABASE_URL')
         if database_url:
-            self.pool = psycopg2.pool.ThreadedConnectionPool(minconn, maxconn, dsn=database_url)
+            self.pool = psycopg2.pool.ThreadedConnectionPool(minconn, maxconn, dsn=database_url, **self.KEEPALIVE)
         else:
             self.pool = psycopg2.pool.ThreadedConnectionPool(
                 minconn, maxconn,
@@ -49,11 +51,54 @@ class DatabaseManager:
                 dbname=os.environ.get('PGDATABASE', 'fraud_detection'),
                 user=os.environ.get('PGUSER', 'fraud_app'),
                 password=os.environ.get('PGPASSWORD'),
+                **self.KEEPALIVE
             )
+
+    # Ask the operating system to probe idle connections, so a dropped one is noticed
+    KEEPALIVE = {'keepalives': 1, 'keepalives_idle': 30, 'keepalives_interval': 10, 'keepalives_count': 3}
+
+    # A managed database may pause when idle and drop the pool's connections without
+    # telling the service. A connection unused for longer than this is tested before
+    # it is handed out, and replaced if it is dead.
+    CHECK_AFTER_SECONDS = 20
+    ATTEMPTS = 3
+
+    def _getconn(self):
+        """A usable connection from the pool: one that has been idle is tested first,
+        and a dead one is thrown away and replaced instead of failing the request."""
+        for attempt in range(self.ATTEMPTS):
+            try:
+                conn = self.pool.getconn()
+            except (psycopg2.OperationalError, psycopg2.InterfaceError):
+                # opening a new connection failed (for example while a paused database
+                # wakes up): wait a moment and try again, and give up on the last try
+                if attempt == self.ATTEMPTS - 1:
+                    raise
+                time.sleep(1 + attempt)
+                continue
+            idle = time.monotonic() - self._last_used.get(id(conn), 0)
+            if not conn.closed and idle < self.CHECK_AFTER_SECONDS:
+                return conn
+            try:
+                if conn.closed:
+                    raise psycopg2.InterfaceError('connection is closed')
+                with conn.cursor() as cursor:
+                    cursor.execute('SELECT 1')
+                conn.rollback()  # end the transaction the test started
+                return conn
+            except (psycopg2.OperationalError, psycopg2.InterfaceError):
+                self._last_used.pop(id(conn), None)
+                self.pool.putconn(conn, close=True)
+        return self.pool.getconn()
+
+    def _putconn(self, conn):
+        """Return a connection to the pool and note when it was last used"""
+        self._last_used[id(conn)] = time.monotonic()
+        self.pool.putconn(conn)
 
     def create_tables(self):
         """Create all necessary database tables with optimized indexes"""
-        conn = self.pool.getconn()
+        conn = self._getconn()
         try:
             cursor = conn.cursor()
 
@@ -142,7 +187,7 @@ class DatabaseManager:
 
             print("  ✓ Tables created with optimized indexes")
         finally:
-            self.pool.putconn(conn)
+            self._putconn(conn)
 
     def _insert_sample_customers(self, conn):
         """Insert sample customer data. Caller provides the connection."""
@@ -179,7 +224,7 @@ class DatabaseManager:
 
     def log_transaction(self, transaction_data):
         """Log a transaction to database (Theme 1: Database Storage)"""
-        conn = self.pool.getconn()
+        conn = self._getconn()
         try:
             cursor = conn.cursor()
             cursor.execute('''
@@ -203,11 +248,11 @@ class DatabaseManager:
             conn.rollback()
             print(f"Database error: {e}")
         finally:
-            self.pool.putconn(conn)
+            self._putconn(conn)
 
     def log_fraud_alert(self, alert_data):
         """Log fraud alert (Theme 6: Handling Challenges)"""
-        conn = self.pool.getconn()
+        conn = self._getconn()
         try:
             cursor = conn.cursor()
             flags_json = json.dumps(alert_data.get('sql_flags', {}))
@@ -230,14 +275,14 @@ class DatabaseManager:
             conn.rollback()
             print(f"Database error: {e}")
         finally:
-            self.pool.putconn(conn)
+            self._putconn(conn)
 
     def get_customer_profile(self, customer_id):
         """
         Retrieve customer profile (Theme 4: Data Mining - Behavioral Analysis)
         Uses optimized SQL query with indexes
         """
-        conn = self.pool.getconn()
+        conn = self._getconn()
         try:
             cursor = conn.cursor(cursor_factory=RealDictCursor)
             cursor.execute('SELECT * FROM customers WHERE customer_id = %s', (customer_id,))
@@ -280,14 +325,14 @@ class DatabaseManager:
             print(f"Error retrieving customer profile: {e}")
             return {}
         finally:
-            self.pool.putconn(conn)
+            self._putconn(conn)
 
     def get_recent_transactions(self, customer_id, minutes=60):
         """
         Get recent transactions for velocity check (Theme 5: SQL Optimization)
         Uses indexed query for fast retrieval
         """
-        conn = self.pool.getconn()
+        conn = self._getconn()
         try:
             cursor = conn.cursor(cursor_factory=RealDictCursor)
             cutoff_time = datetime.now() - timedelta(minutes=minutes)
@@ -304,11 +349,11 @@ class DatabaseManager:
             print(f"Error retrieving recent transactions: {e}")
             return []
         finally:
-            self.pool.putconn(conn)
+            self._putconn(conn)
 
     def get_fraud_statistics(self):
         """Get fraud detection statistics (Theme 7: Business Impact)"""
-        conn = self.pool.getconn()
+        conn = self._getconn()
         try:
             cursor = conn.cursor()
 
@@ -345,11 +390,11 @@ class DatabaseManager:
             print(f"Error getting statistics: {e}")
             return {}
         finally:
-            self.pool.putconn(conn)
+            self._putconn(conn)
 
     def get_all_transactions(self):
         """Retrieve all transactions from database"""
-        conn = self.pool.getconn()
+        conn = self._getconn()
         try:
             cursor = conn.cursor(cursor_factory=RealDictCursor)
             cursor.execute('SELECT * FROM transactions')
@@ -359,14 +404,14 @@ class DatabaseManager:
             print(f"Error retrieving transactions: {e}")
             return []
         finally:
-            self.pool.putconn(conn)
+            self._putconn(conn)
 
     def get_latest_transactions(self, limit=50, decision=None):
         """
         Retrieve the most recent transactions, newest first (for dashboard display).
         Pass decision ('BLOCK', 'REVIEW', 'MONITOR', or 'ALLOW') to filter to just that outcome.
         """
-        conn = self.pool.getconn()
+        conn = self._getconn()
         try:
             cursor = conn.cursor(cursor_factory=RealDictCursor)
             if decision:
@@ -388,7 +433,7 @@ class DatabaseManager:
             print(f"Error retrieving latest transactions: {e}")
             return []
         finally:
-            self.pool.putconn(conn)
+            self._putconn(conn)
 
     def close(self):
         """Close all pooled database connections. Safe to call more than once."""
