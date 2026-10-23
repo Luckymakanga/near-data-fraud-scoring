@@ -108,7 +108,8 @@ async function apiFetch(path, options = {}) {
     throw new Error("Too many requests - please wait a few minutes, then refresh.");
   }
   if (!res.ok) {
-    throw new Error(data.error || `Request failed (${res.status})`);
+    const reference = data.error_id ? ` (reference ${data.error_id})` : "";
+    throw new Error((data.error || `Request failed (${res.status})`) + reference);
   }
   return data;
 }
@@ -185,7 +186,16 @@ el.logoutBtn.addEventListener("click", () => {
   showLogin();
 });
 
-el.refreshBtn.addEventListener("click", loadAll);
+el.refreshBtn.addEventListener("click", async () => {
+  el.refreshBtn.disabled = true;
+  el.refreshBtn.textContent = "Refreshing…";
+  try {
+    if (await loadAll()) showToast("Dashboard updated");
+  } finally {
+    el.refreshBtn.disabled = false;
+    el.refreshBtn.textContent = "Refresh";
+  }
+});
 
 // ---------- Health check ----------
 
@@ -594,7 +604,7 @@ el.uploadForm.addEventListener("submit", async (e) => {
     el.uploadTableWrap.hidden = false;
 
     showToast(failure ? "Upload stopped part-way" : `Uploaded dataset analyzed: ${fraudCount}/${results.length} flagged`);
-    await Promise.all([loadStats(), loadTransactions()]);
+    await loadAll();     // the upload is done; a failed refresh must not turn it into an error
   } catch (err) {
     el.uploadResult.className = "upload-result error";
     el.uploadResult.textContent = `Error: ${err.message}`;
@@ -605,13 +615,26 @@ el.uploadForm.addEventListener("submit", async (e) => {
 
 // ---------- Bootstrap ----------
 
-async function loadAll() {
-  checkHealth();
-  try {
-    await Promise.all([loadStats(), loadTransactions(), loadPatterns()]);
-  } catch (err) {
-    if (err.message !== "Unauthorized") showToast(err.message);
+// Each panel loads on its own, so one failing request does not blank the others, and a reload
+// already under way is reused, so a slow server is never asked the same thing twice at once.
+let loadingAll = null;
+
+function loadAll() {
+  if (!loadingAll) {
+    loadingAll = refreshPanels().finally(() => { loadingAll = null; });
   }
+  return loadingAll;
+}
+
+async function refreshPanels() {
+  checkHealth();
+  const panels = [["statistics", loadStats], ["transactions", loadTransactions], ["fraud patterns", loadPatterns]];
+  const outcomes = await Promise.allSettled(panels.map(([, load]) => load()));
+  const failed = outcomes
+    .map((o, i) => ({ name: panels[i][0], reason: o.reason }))
+    .filter((o) => o.reason && o.reason.message !== "Unauthorized");
+  if (failed.length) showToast(`Could not refresh the ${failed[0].name}: ${failed[0].reason.message}`);
+  return outcomes.every((o) => o.status === "fulfilled");
 }
 
 if (getToken()) {
