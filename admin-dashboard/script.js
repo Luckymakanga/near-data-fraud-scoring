@@ -631,9 +631,9 @@ async function refreshPanels() {
   const panels = [["statistics", loadStats], ["transactions", loadTransactions], ["fraud patterns", loadPatterns]];
   const outcomes = await Promise.allSettled(panels.map(([, load]) => load()));
   const failed = outcomes
-    .map((o, i) => ({ name: panels[i][0], reason: o.reason }))
+    .map((o, i) => ({ panel: panels[i][0], reason: o.reason }))
     .filter((o) => o.reason && o.reason.message !== "Unauthorized");
-  if (failed.length) showToast(`Could not refresh the ${failed[0].name}: ${failed[0].reason.message}`);
+  if (failed.length) showToast("Could not refresh the " + failed[0].panel + ": " + failed[0].reason.message);   // textContent, not HTML
   return outcomes.every((o) => o.status === "fulfilled");
 }
 
