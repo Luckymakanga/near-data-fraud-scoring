@@ -191,6 +191,15 @@ el.logoutBtn.addEventListener("click", () => {
   showLogin();
 });
 
+// The About panel starts open for a new visitor and stays as they leave it
+const aboutPanel = document.getElementById("aboutPanel");
+try {
+  if (localStorage.getItem("fraudAdmin.aboutClosed") === "1") aboutPanel.open = false;
+} catch (e) { /* storage may be blocked; the panel just stays open */ }
+aboutPanel.addEventListener("toggle", () => {
+  try { localStorage.setItem("fraudAdmin.aboutClosed", aboutPanel.open ? "0" : "1"); } catch (e) { /* ignore */ }
+});
+
 el.refreshBtn.addEventListener("click", async () => {
   el.refreshBtn.disabled = true;
   el.refreshBtn.textContent = "Refreshing…";

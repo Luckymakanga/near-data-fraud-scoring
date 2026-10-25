@@ -274,6 +274,17 @@ code {
   font-size: 16px;
 }
 
+.about-panel summary { cursor: pointer; list-style: none; }
+.about-panel summary::-webkit-details-marker { display: none; }
+.about-panel summary h2 { display: inline; }
+.about-panel summary::after { content: " (hide)"; font-size: 0.85rem; color: var(--text-dim); }
+.about-panel:not([open]) summary::after { content: " (show)"; }
+.about-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 28px; margin-top: 12px; }
+@media (max-width: 700px) { .about-grid { grid-template-columns: minmax(0, 1fr); } }
+.about-grid h3 { margin: 0 0 4px; font-size: 0.95rem; }
+.about-grid p, .about-grid li { font-size: 0.9rem; line-height: 1.5; margin: 0 0 6px; }
+.about-grid ol { margin: 0; padding-left: 20px; }
+
 .panel-hint {
   margin: -8px 0 14px;
   color: var(--text-dim);

@@ -42,6 +42,33 @@
       </div>
     </header>
 
+    <details class="panel about-panel" id="aboutPanel" open>
+      <summary><h2>About this prototype</h2></summary>
+      <div class="about-grid">
+        <div>
+          <h3>What it is</h3>
+          <p>A university research prototype that gives each card transaction a fraud score from 0 to 1 and a decision, and shows how that decision was reached. It is part of a study of where fraud scoring should run in a bank: outside the database, inside it, or in the application.</p>
+        </div>
+        <div>
+          <h3>About the data</h3>
+          <p>The transactions come from a public dataset of European card payments, not from any bank. Fields V1 to V28 are anonymised numbers with no human meaning, so there is no location, branch or merchant. Customer names are demo labels.</p>
+        </div>
+        <div>
+          <h3>What to try</h3>
+          <ol>
+            <li>Under &ldquo;Analyze a Transaction&rdquo;, click <strong>Load Random Transaction</strong>, then choose a customer, then <strong>Analyze</strong>.</li>
+            <li>Open &ldquo;How this score was made&rdquo; to see why it got its decision.</li>
+            <li>Look up a customer, and filter Recent Transactions by decision.</li>
+            <li>Upload a CSV, or open <strong>Research results</strong> at the top.</li>
+          </ol>
+        </div>
+        <div>
+          <h3>What the numbers mean</h3>
+          <p><strong>Decision:</strong> BLOCK stops the payment, REVIEW sends it to an analyst, MONITOR allows it but watches it, ALLOW has no concern. <strong>Flagged</strong> means the model judged it fraud. <strong>Prevention rate</strong> is the share of the money in all transactions that was in flagged ones.</p>
+        </div>
+      </div>
+    </details>
+
     <section class="stats-grid" id="statsGrid">
       <div class="stat-card">
         <span class="stat-label">Total Transactions</span>
