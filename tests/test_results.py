@@ -119,6 +119,8 @@ class TestPage:
     def test_every_file_the_page_loads_exists(self):
         html = (DASHBOARD / 'results.html').read_text(encoding='utf-8')
         for name in re.findall(r'(?:src|href)="([^"]+)"', html):
+            if name.startswith('https://'):
+                continue  # links out of the application are checked in test_links_out_of_the_page
             assert (DASHBOARD / name).exists(), name
 
     def test_every_element_the_script_fills_exists_in_the_page(self):
@@ -132,3 +134,26 @@ class TestPage:
         assert 'href="results.html"' in html
         password_input = re.search(r'<input[^>]*id="password"[^>]*>', html).group(0)
         assert 'value=' not in password_input
+
+    def test_links_out_of_the_page_open_in_a_new_tab_and_cannot_reach_back(self):
+        html = (DASHBOARD / 'results.html').read_text(encoding='utf-8')
+        anchors = re.findall(r'<a [^>]*href="https://[^"]+"[^>]*>', html)
+        assert anchors, 'the learn-more links are missing'
+        for anchor in anchors:
+            assert 'target="_blank"' in anchor and 'rel="noopener noreferrer"' in anchor, anchor
+
+    def test_the_page_opens_with_a_short_summary_and_keeps_the_detail_behind_show_links(self):
+        html = (DASHBOARD / 'results.html').read_text(encoding='utf-8')
+        source = (DASHBOARD / 'results.js').read_text(encoding='utf-8')
+        for element_id in ('summaryPanel', 'summaryList', 'detectionTake', 'baselineTake', 'sweepTake', 'networkTake'):
+            assert f'id="{element_id}"' in html and f'getElementById("{element_id}")' in source, element_id
+        assert html.count('<details class="more"') >= 6
+        assert html.index('id="summaryPanel"') < html.index('id="detectionPanel"')
+
+    def test_no_result_is_typed_into_the_page(self):
+        # every figure comes from the result files, so none may be written into the page itself
+        html = (DASHBOARD / 'results.html').read_text(encoding='utf-8')
+        for panel in ('summaryPanel', 'detectionPanel', 'baselinePanel', 'sweepPanel', 'networkPanel'):
+            block = re.search(r'<section[^>]*id="' + panel + r'".*?</section>', html, re.S).group(0)
+            visible = re.sub(r'<[^>]+>', ' ', block)
+            assert not re.search(r'\d+(?:\.\d+)? ?(?:ms|seconds|per second|%)', visible), panel

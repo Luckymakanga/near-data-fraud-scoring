@@ -22,13 +22,22 @@
 
     <section class="panel" id="introPanel">
       <h2>What this page shows</h2>
-      <p class="panel-hint">The study compares three ways of scoring transactions for fraud with the same model: an <strong>external batch</strong> job that polls the database, scoring <strong>inside the database</strong> as each row is stored, and scoring in the <strong>application tier</strong> (the design this live demo uses). Every figure below comes from the study's benchmark scripts and result files; none is measured on this dashboard or on the live server.</p>
-      <p class="panel-hint">Decision latency is the time from a transaction&rsquo;s scheduled arrival to the moment its fraud score is saved, so waiting in a queue counts. The data are a public dataset of European card transactions used as a stand-in; they say nothing about fraud rates in Uganda.</p>
+      <p class="panel-hint">The same fraud model was run three ways: in a separate batch job, inside the database, and in the application. This page shows which one reaches a decision first. Shorter is better.</p>
+      <details class="more">
+        <summary>More about this page</summary>
+        <p class="panel-hint">The three ways are an <strong>external batch</strong> job that polls the database, scoring <strong>inside the database</strong> as each row is stored, and scoring in the <strong>application tier</strong> (the design this live demo uses). Every figure on this page comes from the study's benchmark scripts and result files; none is measured on this dashboard or on the live server.</p>
+        <p class="panel-hint">Decision latency is the time from a transaction&rsquo;s scheduled arrival to the moment its fraud score is saved, so waiting in a queue counts. The data are a public dataset of European card transactions used as a stand-in; they say nothing about fraud rates in Uganda.</p>
+      </details>
       <p class="results-status" id="status">Loading the results&hellip;</p>
     </section>
 
-    <section class="panel" id="pipelinePanel">
-      <h2>How a transaction is scored</h2>
+    <section class="panel" id="summaryPanel" hidden>
+      <h2>In short</h2>
+      <ul class="summary-list" id="summaryList"></ul>
+    </section>
+
+    <details class="panel about-panel" id="pipelinePanel">
+      <summary><h2>How a transaction is scored</h2></summary>
       <p class="panel-hint">The prototype takes each transaction through the steps below. The three highlighted steps are the <strong>scoring</strong>, which is the part the study moves between architectures. The rule checks and the decision are not part of the benchmarks.</p>
       <ol class="flow">
         <li class="flow-step"><strong>Transaction arrives</strong><span>The amount, the time and 28 anonymized components, for a named customer.</span></li>
@@ -47,18 +56,26 @@
         <div class="where-card" style="--swatch: var(--accent)"><strong>Application tier</strong><span>The application scores the transaction first, then saves it with its score. The live demo works this way.</span></div>
       </div>
       <p class="table-note">All three use the same model and the same feature code, so only the place the scoring runs differs. To see the steps for one real transaction, use &ldquo;Analyze a Transaction&rdquo; on the dashboard.</p>
-    </section>
+    </details>
 
     <section class="panel" id="detectionPanel" hidden>
       <h2>1. How well does the model detect fraud?</h2>
-      <p class="panel-hint" id="detectionHint"></p>
+      <p class="takeaway" id="detectionTake"></p>
       <div class="metrics-grid" id="detectionCards"></div>
+      <details class="more">
+        <summary>How to read this</summary>
+        <p class="panel-hint" id="detectionHint"></p>
+      </details>
     </section>
 
     <section class="panel" id="baselinePanel" hidden>
       <h2>2. The three architectures at a light load</h2>
-      <p class="panel-hint" id="baselineHint"></p>
+      <p class="takeaway" id="baselineTake"></p>
       <div class="table-wrap" id="baselineTable"></div>
+      <details class="more">
+        <summary>How to read this</summary>
+        <p class="panel-hint" id="baselineHint"></p>
+      </details>
     </section>
 
     <section class="panel" id="sweepPanel" hidden>
@@ -66,25 +83,52 @@
         <h2>3. What happens as the load rises?</h2>
         <div class="pill-row" id="connectionPills" role="group" aria-label="Number of connections"></div>
       </div>
-      <p class="panel-hint" id="sweepHint"></p>
+      <p class="takeaway" id="sweepTake"></p>
       <div class="chart-wrap" id="sweepChart"></div>
       <div class="legend" id="sweepLegend"></div>
-      <div class="table-wrap" id="sweepTable"></div>
-      <h3 class="subhead">Memory and processor cost as connections are added (80 transactions per second)</h3>
-      <div class="table-wrap" id="costTable"></div>
+      <details class="more">
+        <summary>Show the numbers</summary>
+        <div class="table-wrap" id="sweepTable"></div>
+        <h3 class="subhead">Memory and processor cost as connections are added (80 transactions per second)</h3>
+        <div class="table-wrap" id="costTable"></div>
+      </details>
+      <details class="more">
+        <summary>How to read this</summary>
+        <p class="panel-hint" id="sweepHint"></p>
+      </details>
     </section>
 
     <section class="panel" id="networkPanel" hidden>
       <h2>4. Does distance between the application and the database matter?</h2>
-      <p class="panel-hint" id="networkHint"></p>
+      <p class="takeaway" id="networkTake"></p>
       <div class="chart-wrap" id="networkChart"></div>
       <div class="legend" id="networkLegend"></div>
-      <div class="table-wrap" id="networkTable"></div>
+      <details class="more">
+        <summary>Show the numbers</summary>
+        <div class="table-wrap" id="networkTable"></div>
+      </details>
+      <details class="more">
+        <summary>How to read this</summary>
+        <p class="panel-hint" id="networkHint"></p>
+      </details>
     </section>
 
     <section class="panel" id="notesPanel" hidden>
       <h2>Read these figures with care</h2>
-      <ul class="note-list" id="notesList"></ul>
+      <p class="takeaway">These are laboratory results on public data. They say nothing about fraud in Uganda or about any particular bank.</p>
+      <details class="more">
+        <summary>See all the notes</summary>
+        <ul class="note-list" id="notesList"></ul>
+      </details>
+    </section>
+
+    <section class="panel" id="learnPanel">
+      <h2>Learn more</h2>
+      <p class="panel-hint">The code, the full results and a technical description are in the project&rsquo;s public repository.</p>
+      <div class="learn-links">
+        <a class="btn ghost" href="https://github.com/Luckymakanga/near-data-fraud-scoring#readme" target="_blank" rel="noopener noreferrer">About the project</a>
+        <a class="btn ghost" href="https://github.com/Luckymakanga/near-data-fraud-scoring/blob/main/SYSTEM_SUMMARY.md" target="_blank" rel="noopener noreferrer">How the system works</a>
+      </div>
     </section>
   </div>
 

@@ -781,6 +781,18 @@ code {
 
 .note-list li + li { margin-top: 6px; }
 
+/* Results page: a short line first, the detail behind a "show" link */
+.takeaway { font-size: 1.05rem; line-height: 1.5; margin: 4px 0 12px; }
+.summary-list { margin: 8px 0 0; padding-left: 20px; font-size: 1.02rem; line-height: 1.55; }
+.summary-list li + li { margin-top: 6px; }
+.more { margin: 8px 0 4px; }
+.more > summary { cursor: pointer; list-style: none; color: var(--accent); font-size: 0.92rem; font-weight: 600; }
+.more > summary::-webkit-details-marker { display: none; }
+.more > summary::before { content: "+ "; }
+.more[open] > summary::before { content: "\2212 "; }
+.more > :not(summary) { margin-top: 8px; }
+.learn-links { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+
 /* ---------- How a score was made ---------- */
 
 .explain-box {

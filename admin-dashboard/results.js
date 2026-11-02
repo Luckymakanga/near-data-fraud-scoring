@@ -72,6 +72,17 @@ function fmtNum(n, digits) {
   return typeof n === "number" ? n.toFixed(digits) : "–";
 }
 
+function pct(x) {
+  return typeof x === "number" ? `${Math.round(x * 100)}%` : "–";
+}
+
+// "23 ms inside the database and 23 ms in the application" reads badly when the two are the same
+function onArrivalPhrase(inDatabase, application) {
+  const a = fmtMs(inDatabase), b = fmtMs(application);
+  return a === b ? `about ${a}, whether inside the database or in the application`
+    : `about ${a} inside the database and ${b} in the application`;
+}
+
 function latencyCell(row) {
   const text = `${fmtMs(row.p50_ms)} / ${fmtMs(row.p99_ms)}`;
   if (!row.saturated) return text;
@@ -150,6 +161,8 @@ function legend(container, entries, note) {
 function renderDetection(d) {
   const panel = document.getElementById("detectionPanel");
   const labels = { precision: "Precision", recall: "Recall", f1: "F1 score", pr_auc: "PR-AUC", fpr: "False-positive rate" };
+  document.getElementById("detectionTake").textContent =
+    `The model found ${pct(d.metrics.recall.value)} of the frauds in the test. About ${pct(d.metrics.precision.value)} of the transactions it flagged were really fraud.`;
   document.getElementById("detectionHint").textContent =
     `Measured on the later ${d.test_transactions.toLocaleString()} transactions (${d.test_frauds} frauds), after training on the earlier ones, with the real fraud prevalence restored. ` +
     `With so few frauds the intervals are wide. Precision is ${fmtNum(d.precision_before_prevalence_restored, 2)} before the prevalence is restored, which is why that step matters.`;
@@ -167,6 +180,9 @@ function renderDetection(d) {
 }
 
 function renderBaseline(b) {
+  document.getElementById("baselineTake").textContent =
+    `A batch job took about ${fmtMs(b.architectures.external_batch.p50_ms)} to decide, because it waits for its timer. ` +
+    `Scoring as the transaction arrives took ${onArrivalPhrase(b.architectures.in_database.p50_ms, b.architectures.application.p50_ms)}.`;
   document.getElementById("baselineHint").textContent =
     `${b.transactions.toLocaleString()} transactions at ${b.rate_per_s} per second over one connection; median of ${b.runs} runs. ` +
     `A batch job that polls every ${b.batch_interval_s} seconds cannot decide faster than its polling interval; scoring on arrival decides in tens of milliseconds. The scores were identical in all three.`;
@@ -187,6 +203,31 @@ function renderSweep(s) {
   const connectionsAvailable = [...new Set(s.points.map((p) => p.connections))].sort((a, b) => a - b);
   let selected = connectionsAvailable[0];
   const pills = document.getElementById("connectionPills");
+
+  // one sentence, read from the data: where the two designs that score on arrival stopped keeping up with the fewest connections
+  const fewest = connectionsAvailable[0];
+  const firstSaturated = (mode) => {
+    const hit = s.points.filter((p) => p.connections === fewest).sort((a, b) => a.rate_per_s - b.rate_per_s)
+      .find((p) => p.architectures[mode].saturated);
+    return hit ? hit.rate_per_s : null;
+  };
+  const inDb = firstSaturated("in_database"), inApp = firstSaturated("application");
+  const conn = `${fewest} connection${fewest === 1 ? "" : "s"}`;
+  let take;
+  if (inDb && inApp) {
+    take = inDb === inApp
+      ? `With ${conn}, scoring in the database and in the application stopped keeping up at ${inDb} transactions a second.`
+      : `With ${conn}, scoring stopped keeping up at ${inDb} a second inside the database and at ${inApp} a second in the application.`;
+  } else if (inDb || inApp) {
+    take = `With ${conn}, scoring ${inDb ? "inside the database" : "in the application"} stopped keeping up at ${inDb || inApp} transactions a second.`;
+  } else {
+    take = `With ${conn}, both designs that score on arrival kept up at every load tested.`;
+  }
+  const limit = Math.min(...[inDb, inApp].filter(Boolean));
+  if (Number.isFinite(limit) && s.points.some((p) => p.connections > fewest && p.rate_per_s >= limit && !p.architectures.in_database.saturated && !p.architectures.application.saturated)) {
+    take += " More connections let them keep up.";
+  }
+  document.getElementById("sweepTake").textContent = take;
 
   function draw() {
     clear(pills);
@@ -240,6 +281,10 @@ function renderSweep(s) {
 function renderNetwork(n) {
   const roundTrips = [...new Set(n.points.map((p) => Math.round(p.round_trip_ms)))].sort((a, b) => a - b);
   const find = (rt, reads) => n.points.find((p) => Math.round(p.round_trip_ms) === rt && p.reads === reads);
+  const farthest = find(roundTrips[roundTrips.length - 1], 3);
+  document.getElementById("networkTake").textContent = farthest
+    ? `With 3 lookups per transaction and a round trip of ${roundTrips[roundTrips.length - 1]} ms, the application tier took ${fmtMs(farthest.architectures.application.p50_ms)} against ${fmtMs(farthest.architectures.in_database.p50_ms)} for the in-database design.`
+    : "The further the database is from the application, the longer the application tier waits on each lookup.";
   const line = (mode, reads, dashed) => ({
     color: MODE_COLOR[mode], dashed,
     points: roundTrips.map((rt, i) => ({ i, y: (find(rt, reads) || { architectures: {} }).architectures[mode]?.p50_ms })),
@@ -273,6 +318,31 @@ function renderNetwork(n) {
   holder.append(table(["Round trip", "Reads", "External batch", "In-database", "Application tier"], rows));
   holder.append(h("p", { class: "table-note" }, "Each cell: median decision latency."));
   document.getElementById("networkPanel").hidden = false;
+}
+
+// A few plain lines at the top, built from the same result files as everything below
+function renderSummary(results) {
+  const items = [];
+  const b = results.baseline && results.baseline.architectures;
+  if (b) {
+    items.push(`A batch job takes about ${fmtMs(b.external_batch.p50_ms)} to reach a decision.`);
+    items.push(`Scoring as the transaction arrives takes ${onArrivalPhrase(b.in_database.p50_ms, b.application.p50_ms)}.`);
+  }
+  if (results.network) {
+    const trips = [...new Set(results.network.points.map((p) => Math.round(p.round_trip_ms)))].sort((a, c) => a - c);
+    const far = results.network.points.find((p) => Math.round(p.round_trip_ms) === trips[trips.length - 1] && p.reads === 3);
+    if (far) {
+      items.push(`Far from the database, the application waits on every lookup: ${fmtMs(far.architectures.application.p50_ms)} against ${fmtMs(far.architectures.in_database.p50_ms)} at a ${trips[trips.length - 1]} ms round trip.`);
+    }
+  }
+  if (results.detection) {
+    items.push(`The model found ${pct(results.detection.metrics.recall.value)} of the frauds in a test of ${results.detection.test_transactions.toLocaleString()} transactions.`);
+  }
+  if (items.length) items.push("All three use the same model and give the same scores, so only the timing differs.");
+  const list = document.getElementById("summaryList");
+  clear(list);
+  items.forEach((text) => list.append(h("li", {}, text)));
+  document.getElementById("summaryPanel").hidden = !items.length;
 }
 
 function renderNotes(summary) {
@@ -313,6 +383,7 @@ async function load() {
     if (!response.ok) throw new Error(`The server answered ${response.status}`);
     const { results } = await response.json();
 
+    renderSummary(results);
     if (results.detection) renderDetection(results.detection);
     if (results.baseline) renderBaseline(results.baseline);
     if (results.sweep) renderSweep(results.sweep);
