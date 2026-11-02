@@ -182,3 +182,7 @@ The three places where scoring can run, and the architecture of the deployed pro
 ---
 
 Built with Python, scikit-learn, XGBoost, LightGBM, imbalanced-learn, Flask and PostgreSQL. Educational and research use at ISBAT University.
+
+## License
+
+The code is released under the MIT License (see `LICENSE`). The dataset sample in `data/` is not covered by that license; `data/README.md` says where it comes from.
