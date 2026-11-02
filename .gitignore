@@ -6,5 +6,5 @@ uganda_fraud_detection_results.json
 .env
 .benchdb/
 
-# Raw interview material (bank-internal details; never commit)
-docs/private/
+# Reports, drafts, consent forms and raw interview material stay local (bank-internal details; never commit)
+docs/

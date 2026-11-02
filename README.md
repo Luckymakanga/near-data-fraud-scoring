@@ -6,13 +6,13 @@ A research prototype and benchmark for one question:
 
 It is a project for ISBAT University (course BIT3239). The code builds one fraud model, runs it in three places (an external batch job, inside the database, and in the application tier), and measures how detection quality, decision latency and system cost change with load and with the distance between application and database.
 
-**What this is not.** It is not a production system. It uses a public European card dataset as a proxy, because no bank data was requested or used, so it says nothing about fraud rates or patterns in Uganda. Its login uses the public demo password (`admin` / `admin`) unless you set your own. The numbers below come from one laptop.
+**What this is not.** It is not a production system. It uses a public European card dataset as a proxy, because no bank data was requested or used, so it says nothing about fraud rates or patterns in Uganda. Its login password is set by whoever runs it (see Security settings). The numbers below come from one laptop.
 
 ---
 
 ## What was measured
 
-All figures are in `results/` and are described, with their limits, in `docs/Methodology.docx`. Latency is the time from a transaction's scheduled arrival to its committed fraud score, so queueing is included.
+All figures are in `results/` and are described, with their limits, in `SYSTEM_SUMMARY.md`. Latency is the time from a transaction's scheduled arrival to its committed fraud score, so queueing is included.
 
 **Detection quality** (time-ordered split, 75 frauds in the test set, real fraud prevalence restored, 95% bootstrap intervals): precision 0.39 (0.25 to 0.68), recall 0.84 (0.75 to 0.92), F1 score 0.53 (0.38 to 0.76), PR-AUC 0.75 (0.62 to 0.90), false-positive rate 0.0017. With so few frauds these intervals are wide.
 
@@ -67,7 +67,7 @@ Scores were identical in all three architectures in every run.
 | `admin-dashboard/` | Static web dashboard, including `results.html`, a page presenting the study's measured results |
 | `results_summary.py` | Condenses the files in `results/` for that page (served at `/api/research/results`, login required) |
 
-**Other:** `data/` (the dataset sample and its provenance), `docs/` (concept note, literature review, methodology, interview guide, reading notes), `render.yaml` and `Procfile` (deployment).
+**Other:** `data/` (the dataset sample and its provenance), `pictures/` (screenshots and diagrams), `render.yaml` and `Procfile` (deployment).
 
 An unfinished stream-processing sketch (`advanced_streaming.py`) and an unrelated static page (`focus-flow/`) from the first commit were removed; both are in the git history. No Kafka or other message broker is used anywhere.
 
@@ -83,7 +83,7 @@ pip install -r requirements.txt
 
 **Database.** The prototype and benchmarks need PostgreSQL. Copy `.env.example` to `.env` and set either `DATABASE_URL` or the `PG*` variables.
 
-**Security settings.** Set `SECRET_KEY` in `.env`; it signs login tokens and the API refuses to start without it (generate one with `python -c "import secrets; print(secrets.token_hex(32))"`, or run with `FLASK_DEBUG=true` to use a development-only key). To change the admin login, set `ADMIN_PASSWORD_HASH` (preferred) or `ADMIN_PASSWORD`, and optionally `ADMIN_USERNAME`; until you do, the public demo password is used and a warning is logged.
+**Security settings.** Set `SECRET_KEY` in `.env`; it signs login tokens and the API refuses to start without it (generate one with `python -c "import secrets; print(secrets.token_hex(32))"`, or run with `FLASK_DEBUG=true` to use a development-only key). To change the admin login, set `ADMIN_PASSWORD_HASH` (preferred) or `ADMIN_PASSWORD`, and optionally `ADMIN_USERNAME`; until you do, a built-in development password is used and a warning is logged.
 
 **Detection quality**
 
@@ -123,7 +123,7 @@ Timing results are only meaningful on a quiet machine: close other programs firs
 | Admin dashboard | [fraud-detection-dashboard-gp35.onrender.com](https://fraud-detection-dashboard-gp35.onrender.com) |
 | API | [fraud-detection-api-865q.onrender.com](https://fraud-detection-api-865q.onrender.com) |
 
-Hosted on Render's free tier with a Neon PostgreSQL database. Log in with `admin` / `admin` (the public demo password; set `ADMIN_PASSWORD_HASH` or `ADMIN_PASSWORD` in Render's dashboard to change it). The free services sleep after 15 minutes idle, and the first request afterwards is slow because the service restarts and retrains the model (about a minute). This deployment is a demonstration of the application-tier design on the proxy dataset; its latency has not been measured.
+Hosted on Render's free tier with a Neon PostgreSQL database. The login password is set on the host and is not published here; to try the system yourself, run it locally (see Security settings). The free services sleep after 15 minutes idle, and the first request afterwards is slow because the service restarts and retrains the model (about a minute). This deployment is a demonstration of the application-tier design on the proxy dataset; its latency has not been measured.
 
 ---
 
@@ -131,7 +131,7 @@ Hosted on Render's free tier with a Neon PostgreSQL database. Log in with `admin
 
 | Endpoint | Purpose |
 |---|---|
-| `POST /api/auth/login` | Get a token (demo password unless you set your own); limited to 10 attempts a minute |
+| `POST /api/auth/login` | Get a token; limited to 10 attempts a minute |
 | `POST /api/transactions/analyze` | Score one transaction |
 | `POST /api/transactions/batch-analyze` | Score up to 500 transactions, synchronously (the dashboard sends 50 at a time) |
 | `GET /api/transactions/recent` | Recent transactions, optionally filtered by decision |
@@ -152,19 +152,30 @@ Limits are 200 requests a day and 50 an hour per address by default, with lower 
 - **Not tested:** concept drift, whether explanations help analysts, behaviour on a bank's real systems, and the latency of the deployed service.
 - **Illustrative figures.** The ROI and executive-summary endpoints are computed from cost assumptions written into `analytics.py` (for example an assumed implementation cost and a per-case "reputation benefit"). They are not measurements and should not be used as evidence.
 - **Rule checks are unevaluated and use fictional customers.** The prototype combines the model score with simple rules (amount against the customer's average, transaction frequency, hour of day). The customer profiles behind those rules are ten fictional customers with fixed values, because the dataset has no customer identifiers. Only the model has been evaluated against fraud labels; the rules and the final decision labels (`BLOCK`, `REVIEW`, `MONITOR`, `ALLOW`) have not.
-- **Security.** This is a demo and should not be deployed as it stands. The latest changes fixed the most serious findings of a code review: transaction and customer ids are validated by the server and escaped by the dashboard (closing a stored cross-site scripting weakness), the API no longer has a built-in signing key, the admin login comes from the environment and is rate limited, and server errors no longer reveal internal details. Still open: one shared admin account with the public demo password until you set your own (the live demo is in this state), cross-origin access open to every site, no audit trail, unpinned dependencies, and in-database scoring that loads a model from a pickle file inside the database server. All thirteen findings, what is fixed and what is not are in section 7 of `SYSTEM_SUMMARY.md`.
+- **Security.** This is a demo and should not be deployed as it stands. The latest changes fixed the most serious findings of a code review: transaction and customer ids are validated by the server and escaped by the dashboard (closing a stored cross-site scripting weakness), the API no longer has a built-in signing key, the admin login comes from the environment and is rate limited, and server errors no longer reveal internal details. Still open: one shared admin account (set its password on the host), cross-origin access open to every site, no audit trail, unpinned dependencies, and in-database scoring that loads a model from a pickle file inside the database server. All thirteen findings, what is fixed and what is not are in section 7 of `SYSTEM_SUMMARY.md`.
 
 ---
+
+## Screenshots
+
+Taken from a local run with the trained model; the transactions are a public dataset and the customers are fictional.
+
+| | |
+|---|---|
+| ![Analyzing a transaction](pictures/01-analyze-a-transaction.jpg) | ![How the score was made: the models](pictures/02-how-the-score-was-made-models.jpg) |
+| ![How the score was made: the rule checks](pictures/03-how-the-score-was-made-rules.jpg) | ![Research results](pictures/04-research-results.jpg) |
+| ![The load sweep](pictures/05-load-sweep.jpg) | ![The results page on a phone](pictures/06-results-on-a-phone.jpg) |
+
+The three places where scoring can run, and the architecture of the deployed prototype:
+
+![The three scoring architectures](pictures/07-three-architectures.png)
+
+![Architecture of the deployed prototype](pictures/08-prototype-architecture.png)
 
 ## Documents
 
 | Document | Contents |
 |---|---|
-| `docs/Concept_Note_v2.docx` | The research proposal |
-| `docs/Literature_Review.docx` | Seven themes, 35 journal articles read and appraised |
-| `docs/Methodology.docx` | Design science methodology, data, experiments and results so far |
-| `docs/literature/notes/` | Search logs and reading notes behind the review |
-| `docs/interview_guide.md` | Guide for a practitioner conversation |
 | `SYSTEM_SUMMARY.md` | Technical description of the system and the benchmarks |
 | `data/README.md` | Dataset provenance and why it was chosen |
 
