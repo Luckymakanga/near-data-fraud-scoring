@@ -320,8 +320,43 @@ function renderNetwork(n) {
   document.getElementById("networkPanel").hidden = false;
 }
 
+// The verdict, worked out from every condition the study tested (light load, load sweep, distance test).
+// Two on-arrival designs are "about equal" when their medians are within 10% of each other.
+function verdictText(results) {
+  const conditions = [];
+  const add = (arch) => {
+    if (!arch || !arch.external_batch || !arch.in_database || !arch.application) return;
+    conditions.push({
+      batch: arch.external_batch.p50_ms, db: arch.in_database.p50_ms, app: arch.application.p50_ms,
+      overloaded: Boolean(arch.in_database.saturated || arch.application.saturated),
+    });
+  };
+  if (results.baseline) add(results.baseline.architectures);
+  if (results.sweep) results.sweep.points.forEach((p) => add(p.architectures));
+  if (results.network) results.network.points.forEach((p) => add(p.architectures));
+  if (conditions.length < 2 || conditions.some((c) => [c.batch, c.db, c.app].some((v) => typeof v !== "number"))) return "";
+
+  const dbFaster = conditions.filter((c) => c.db / c.app < 0.9).length;
+  const appFaster = conditions.filter((c) => c.db / c.app > 1.1).length;
+  const total = conditions.length;
+  let first;
+  if (dbFaster > appFaster) {
+    first = `Fastest: scoring inside the database. It matched or beat the application in ${total - appFaster} of the ${total} conditions tested.`;
+  } else if (appFaster > dbFaster) {
+    first = `Fastest: scoring in the application. It matched or beat the database in ${total - dbFaster} of the ${total} conditions tested.`;
+  } else {
+    first = "Scoring inside the database and in the application were about equally fast.";
+  }
+  const keptUp = conditions.filter((c) => !c.overloaded);
+  const batchSlower = keptUp.filter((c) => c.batch > Math.max(c.db, c.app)).length;
+  let second = `A batch job was slower than both whenever they kept up (${batchSlower} of ${keptUp.length}).`;
+  if (conditions.some((c) => c.overloaded)) second += " When they were overloaded they fell behind and could be slower than the batch job.";
+  return `${first} ${second}`;
+}
+
 // A few plain lines at the top, built from the same result files as everything below
 function renderSummary(results) {
+  document.getElementById("summaryVerdict").textContent = verdictText(results);
   const items = [];
   const b = results.baseline && results.baseline.architectures;
   if (b) {

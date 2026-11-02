@@ -145,7 +145,7 @@ class TestPage:
     def test_the_page_opens_with_a_short_summary_and_keeps_the_detail_behind_show_links(self):
         html = (DASHBOARD / 'results.html').read_text(encoding='utf-8')
         source = (DASHBOARD / 'results.js').read_text(encoding='utf-8')
-        for element_id in ('summaryPanel', 'summaryList', 'detectionTake', 'baselineTake', 'sweepTake', 'networkTake'):
+        for element_id in ('summaryPanel', 'summaryList', 'summaryVerdict', 'detectionTake', 'baselineTake', 'sweepTake', 'networkTake'):
             assert f'id="{element_id}"' in html and f'getElementById("{element_id}")' in source, element_id
         assert html.count('<details class="more"') >= 6
         assert html.index('id="summaryPanel"') < html.index('id="detectionPanel"')
@@ -157,3 +157,32 @@ class TestPage:
             block = re.search(r'<section[^>]*id="' + panel + r'".*?</section>', html, re.S).group(0)
             visible = re.sub(r'<[^>]+>', ' ', block)
             assert not re.search(r'\d+(?:\.\d+)? ?(?:ms|seconds|per second|%)', visible), panel
+
+    def test_the_verdict_is_worked_out_from_the_data(self):
+        import json, shutil, subprocess
+        node = shutil.which('node')
+        if not node:
+            pytest.skip('node is not installed')
+        source = (DASHBOARD / 'results.js').read_text(encoding='utf-8')
+        start = source.index('function verdictText(results)')
+        end = source.index('// A few plain lines at the top')
+        arch = lambda b, d, a, sat=False: {'external_batch': {'p50_ms': b}, 'in_database': {'p50_ms': d, 'saturated': sat}, 'application': {'p50_ms': a, 'saturated': sat}}
+        results = {
+            'baseline': {'architectures': arch(5000, 23, 23)},
+            'sweep': {'points': [{'architectures': arch(5000, 20, 40)}, {'architectures': arch(5000, 30, 60)}, {'architectures': arch(5100, 9000, 15000, True)}]},
+            'network': {'points': [{'architectures': arch(5000, 60, 120)}]},
+        }
+        script = source[start:end] + 'console.log(verdictText(' + json.dumps(results) + '));'
+        out = subprocess.run([node, '-e', script], capture_output=True, text=True, timeout=30).stdout.strip()
+        assert out.startswith('Fastest: scoring inside the database.')
+        assert 'in 5 of the 5 conditions' in out
+        assert 'slower than both whenever they kept up (4 of 4)' in out
+        assert 'could be slower than the batch job' in out
+        # with the two reversed the verdict follows the data and does not favour the database
+        flipped = {k: v for k, v in results.items()}
+        flipped['sweep'] = {'points': [{'architectures': arch(5000, 40, 20)}, {'architectures': arch(5000, 60, 30)}]}
+        flipped['network'] = {'points': [{'architectures': arch(5000, 120, 60)}]}
+        flipped['baseline'] = {'architectures': arch(5000, 46, 23)}
+        script = source[start:end] + 'console.log(verdictText(' + json.dumps(flipped) + '));'
+        out = subprocess.run([node, '-e', script], capture_output=True, text=True, timeout=30).stdout.strip()
+        assert out.startswith('Fastest: scoring in the application.')
