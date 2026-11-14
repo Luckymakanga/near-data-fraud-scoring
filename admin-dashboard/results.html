@@ -22,11 +22,16 @@
 
     <section class="panel" id="introPanel">
       <h2>What this page shows</h2>
-      <p class="panel-hint">The same fraud model was run three ways: in a separate batch job, inside the database, and in the application. This page shows which one reaches a decision first. Shorter is better.</p>
+      <p class="panel-hint">The same fraud model was run three ways: as an <strong>external batch</strong> job that polls the database, <strong>in-database</strong> as each row is stored, and in the <strong>application tier</strong> (the design this live demo uses). This page shows what was measured and what the measurements do and do not show.</p>
+      <div class="three-things" aria-label="Three different measurements on this site">
+        <div><strong>Risk Score</strong><span>One transaction&rsquo;s score out of 100, on the main dashboard.</span></div>
+        <div><strong>Detection metrics</strong><span>How well the model separates fraud from genuine payments over a whole test set (section 1). They do not depend on where the scoring runs.</span></div>
+        <div><strong>Decision latency</strong><span>How long a decision takes to arrive (sections 2 to 4). It depends on where the scoring runs and does not change the scores.</span></div>
+      </div>
       <details class="more">
         <summary>More about this page</summary>
-        <p class="panel-hint">The three ways are an <strong>external batch</strong> job that polls the database, scoring <strong>inside the database</strong> as each row is stored, and scoring in the <strong>application tier</strong> (the design this live demo uses). Every figure on this page comes from the study's benchmark scripts and result files; none is measured on this dashboard or on the live server.</p>
-        <p class="panel-hint">Decision latency is the time from a transaction&rsquo;s scheduled arrival to the moment its fraud score is saved, so waiting in a queue counts. The data are a public dataset of European card transactions used as a stand-in; they say nothing about fraud rates in Uganda.</p>
+        <p class="panel-hint">Every figure on this page comes from the study&rsquo;s benchmark scripts and result files; none is measured on this dashboard or on the live server.</p>
+        <p class="panel-hint">Decision latency is the time from a transaction&rsquo;s scheduled arrival to the moment its risk score is saved, so waiting in a queue counts. The data are a public dataset of European card transactions used as a stand-in; they say nothing about fraud rates in Uganda.</p>
       </details>
       <p class="results-status" id="status">Loading the results&hellip;</p>
     </section>
@@ -35,21 +40,27 @@
       <h2>In short</h2>
       <p class="verdict" id="summaryVerdict"></p>
       <ul class="summary-list" id="summaryList"></ul>
-      <p class="summary-caveat">This is a laboratory result on public data. A bank&rsquo;s own rules may rule out running code inside its database, so the best choice for a bank can differ.</p>
+      <p class="summary-caveat">This is a laboratory result on public data, from one laptop. A bank&rsquo;s own rules may rule out running code inside its database, so the best choice for a bank can differ, and speed is only one of the things to weigh.</p>
     </section>
 
-    <details class="panel about-panel" id="pipelinePanel">
+    <details class="panel about-panel" id="pipelinePanel" open>
       <summary><h2>How a transaction is scored</h2></summary>
-      <p class="panel-hint">The prototype takes each transaction through the steps below. The three highlighted steps are the <strong>scoring</strong>, which is the part the study moves between architectures. The rule checks and the decision are not part of the benchmarks.</p>
+      <p class="panel-hint">The prototype takes each transaction through the eight steps below. The study measures how long it takes from step 1 to the moment the score is saved, and moves only the <strong>scoring</strong> (steps 4 to 6) between the three architectures. The rule checks and the decision were not part of the benchmarks.</p>
+      <div class="flow-legend" aria-label="Key to the step labels">
+        <span class="flow-tag moves">Moved between architectures</span>
+        <span class="flow-tag timer">Start or end of the timer</span>
+        <span class="flow-tag standin">Stand-in only</span>
+        <span class="flow-tag out">Not in the benchmarks</span>
+      </div>
       <ol class="flow">
-        <li class="flow-step"><strong>Transaction arrives</strong><span>The amount, the time and 28 anonymized components, for a named customer.</span></li>
-        <li class="flow-step"><strong>Customer history is read</strong><span>Average amount, night-time habit and the last hour's activity, from the database.</span></li>
-        <li class="flow-step"><strong>Three rule checks</strong><span>Unusually large amount, too many transactions in an hour, unusual time of day.</span></li>
-        <li class="flow-step moves"><strong>Thirty features are built</strong><span>Time of day, the 28 components and the amount.</span></li>
-        <li class="flow-step moves"><strong>Four models score it</strong><span>XGBoost, LightGBM, a voting pair of those two, and an Isolation Forest.</span></li>
-        <li class="flow-step moves"><strong>Weighted average</strong><span>35%, 35%, 15% and 15% give one fraud score from 0 to 1.</span></li>
-        <li class="flow-step"><strong>Decision</strong><span>Block, review, monitor or allow, from the score and the rule checks together.</span></li>
-        <li class="flow-step"><strong>Saved</strong><span>The transaction, its score and decision are stored in the database.</span></li>
+        <li class="flow-step timer"><span class="flow-tag timer">Timer starts</span><strong>Transaction arrives</strong><span>The amount, the time and 28 anonymized components, for a named customer. Decision latency counts from its scheduled arrival.</span></li>
+        <li class="flow-step standin"><span class="flow-tag standin">Stand-in reads only</span><strong>Customer history is read</strong><span>Average amount, night-time habit and the last hour&rsquo;s activity, from the database. The benchmarks only imitate this with stand-in reads, in the distance test (section 4).</span></li>
+        <li class="flow-step out"><span class="flow-tag out">Not in the benchmarks</span><strong>Three rule checks</strong><span>Unusually large amount, too many transactions in an hour, unusual time of day.</span></li>
+        <li class="flow-step moves"><span class="flow-tag moves">Moved between architectures</span><strong>Thirty features are built</strong><span>Time of day, the 28 components and the amount, by one function shared by every architecture.</span></li>
+        <li class="flow-step moves"><span class="flow-tag moves">Moved between architectures</span><strong>Four models score it</strong><span>XGBoost, LightGBM, a voting pair of those two, and an Isolation Forest. Each gives a score from 0 to 1.</span></li>
+        <li class="flow-step moves"><span class="flow-tag moves">Moved between architectures</span><strong>Weighted average</strong><span>Weights of 35%, 35%, 15% and 15% give one score from 0 to 1, shown on the dashboard as the Risk Score out of 100.</span></li>
+        <li class="flow-step out"><span class="flow-tag out">Not in the benchmarks</span><strong>Decision</strong><span>Block, review, monitor or allow, from the score and the rule checks together.</span></li>
+        <li class="flow-step timer"><span class="flow-tag timer">Timer stops</span><strong>Saved</strong><span>The transaction and its score are stored in the database. In the benchmarks the timer stops when the score is saved.</span></li>
       </ol>
       <h3 class="subhead">Where the scoring step runs in each architecture</h3>
       <div class="where-grid">
@@ -63,7 +74,9 @@
     <section class="panel" id="detectionPanel" hidden>
       <h2>1. How well does the model detect fraud?</h2>
       <p class="takeaway" id="detectionTake"></p>
+      <p class="scope-note" id="detectionScope"></p>
       <div class="metrics-grid" id="detectionCards"></div>
+      <p class="table-note" id="detectionBasis"></p>
       <details class="more">
         <summary>How to read this</summary>
         <p class="panel-hint" id="detectionHint"></p>
@@ -73,7 +86,14 @@
     <section class="panel" id="baselinePanel" hidden>
       <h2>2. The three architectures at a light load</h2>
       <p class="takeaway" id="baselineTake"></p>
+      <h3 class="subhead">Median decision latency</h3>
+      <div class="chart-wrap" id="baselineChart"></div>
+      <p class="chart-read" id="baselineRead"></p>
+      <h3 class="subhead">All the measurements, side by side</h3>
       <div class="table-wrap" id="baselineTable"></div>
+      <p class="table-note" id="baselineKey"></p>
+      <h3 class="subhead">What each design trades</h3>
+      <ul class="tradeoffs" id="baselineTradeoffs"></ul>
       <details class="more">
         <summary>How to read this</summary>
         <p class="panel-hint" id="baselineHint"></p>
@@ -86,12 +106,27 @@
         <div class="pill-row" id="connectionPills" role="group" aria-label="Number of connections"></div>
       </div>
       <p class="takeaway" id="sweepTake"></p>
+      <h3 class="subhead">Median decision latency against transactions per second</h3>
       <div class="chart-wrap" id="sweepChart"></div>
       <div class="legend" id="sweepLegend"></div>
+      <p class="chart-read" id="sweepRead"></p>
+      <h3 class="subhead">What each connection costs, at the one load every connection count was tested</h3>
+      <div class="chart-pair">
+        <div>
+          <h4 class="chart-title">Peak memory against connections</h4>
+          <div class="chart-wrap" id="memoryChart"></div>
+        </div>
+        <div>
+          <h4 class="chart-title">Processor time against connections</h4>
+          <div class="chart-wrap" id="cpuChart"></div>
+        </div>
+      </div>
+      <div class="legend" id="costLegend"></div>
+      <p class="chart-read" id="costRead"></p>
       <details class="more">
         <summary>Show the numbers</summary>
         <div class="table-wrap" id="sweepTable"></div>
-        <h3 class="subhead">Memory and processor cost as connections are added (80 transactions per second)</h3>
+        <h3 class="subhead">Memory and processor cost as connections are added</h3>
         <div class="table-wrap" id="costTable"></div>
       </details>
       <details class="more">
@@ -103,8 +138,11 @@
     <section class="panel" id="networkPanel" hidden>
       <h2>4. Does distance between the application and the database matter?</h2>
       <p class="takeaway" id="networkTake"></p>
+      <p class="scope-note" id="networkWhy"></p>
+      <h3 class="subhead">Median decision latency against the round trip to the database</h3>
       <div class="chart-wrap" id="networkChart"></div>
       <div class="legend" id="networkLegend"></div>
+      <p class="chart-read" id="networkRead"></p>
       <details class="more">
         <summary>Show the numbers</summary>
         <div class="table-wrap" id="networkTable"></div>
@@ -116,18 +154,16 @@
     </section>
 
     <section class="panel" id="notesPanel" hidden>
-      <h2>Read these figures with care</h2>
-      <p class="takeaway">These are laboratory results on public data. They say nothing about fraud in Uganda or about any particular bank.</p>
-      <details class="more">
-        <summary>See all the notes</summary>
-        <ul class="note-list" id="notesList"></ul>
-      </details>
+      <h2>What these results do not show</h2>
+      <p class="takeaway">These are laboratory results on public data, from one machine. They say nothing about fraud rates or about how any Ugandan bank&rsquo;s systems would perform, and the prototype is not a validated banking system.</p>
+      <ul class="note-list" id="notesList"></ul>
     </section>
 
     <section class="panel" id="learnPanel">
       <h2>Learn more</h2>
       <p class="panel-hint">The code, the full results and a technical description are in the project&rsquo;s public repository.</p>
       <div class="learn-links">
+        <a class="btn ghost" href="index.html">Back to the dashboard</a>
         <a class="btn ghost" href="https://github.com/Luckymakanga/near-data-fraud-scoring#readme" target="_blank" rel="noopener noreferrer">About the project</a>
         <a class="btn ghost" href="https://github.com/Luckymakanga/near-data-fraud-scoring/blob/main/SYSTEM_SUMMARY.md" target="_blank" rel="noopener noreferrer">How the system works</a>
       </div>

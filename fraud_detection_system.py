@@ -25,34 +25,52 @@ from advanced_ml_models import AdvancedFraudDetectionModel
 from transaction_processor import TransactionProcessor
 from analytics import FraudAnalytics
 
+# Amounts are shown in UGX for the demonstration at this rate per unit of the dataset's amount.
+# It only changes how an amount is written in a stored reason (the dashboard uses the same rate);
+# the amount itself, the model's inputs and the rule checks are not scaled.
+DEMO_UGX_PER_UNIT = 4000
+
 class BatchContext:
     """What one batch upload reads once and reuses for every row.
 
     Scoring a transaction normally reads the customer's profile and counts the
-    customer's transactions in the last hour. For a batch that is the same read
+    customer's transactions in the hour before it. For a batch that is the same read
     for every row of a customer, and each read is a round trip to a database that
-    may be far away. The profile is read once per customer, and the hourly count
-    is read once and then raised as each row of the batch is stored, which is
-    exactly what reading it again would return (for a single writer)."""
+    may be far away. The profile is read once per customer, and so are the times of
+    the customer's stored transactions; each row's hourly count is then worked out
+    here and the row's own time is added once it is stored, which is exactly what
+    reading it again would return (for a single writer).
+
+    A transaction's hourly count is taken from the transactions' own times when it
+    has one (the dataset's Time), so a batch analysed in one minute does not make a
+    customer look as if they made every transaction in that minute. A transaction
+    without a time is counted by when it was processed, as before."""
 
     def __init__(self, db_manager):
         self.db = db_manager
         self._profiles = {}
         self._recent = {}
+        self._times = {}
 
     def profile(self, customer_id):
         if customer_id not in self._profiles:
             self._profiles[customer_id] = self.db.get_customer_profile(customer_id)
         return self._profiles[customer_id]
 
-    def recent_count(self, customer_id):
+    def recent_count(self, customer_id, at_seconds=None):
+        if at_seconds is not None:
+            if customer_id not in self._times:
+                self._times[customer_id] = list(self.db.get_customer_transaction_times(customer_id))
+            return sum(1 for t in self._times[customer_id] if at_seconds - 3600 < t <= at_seconds)
         if customer_id not in self._recent:
             self._recent[customer_id] = len(self.db.get_recent_transactions(customer_id, minutes=60))
         return self._recent[customer_id]
 
-    def stored(self, customer_id):
+    def stored(self, customer_id, at_seconds=None):
         """A row of this customer has been stored, so the hourly count goes up by one"""
-        if customer_id in self._recent:
+        if at_seconds is not None and customer_id in self._times:
+            self._times[customer_id].append(at_seconds)
+        elif customer_id in self._recent:
             self._recent[customer_id] += 1
 
 
@@ -149,7 +167,8 @@ class FraudDetectionSystem:
         customer_profile = batch.profile(customer_id) if batch else self.db_manager.get_customer_profile(customer_id)
         
         # Perform SQL-based pre-filtering (Theme 5)
-        recent_count = batch.recent_count(customer_id) if batch else None
+        own_time = self._own_time(transaction_data)
+        recent_count = batch.recent_count(customer_id, own_time) if batch else None
         sql_flags, rule_details = self._evaluate_rules(transaction_data, customer_profile, recent_count)
         
         # Prepare features for ML model (Theme 3)
@@ -169,7 +188,7 @@ class FraudDetectionSystem:
         
         # Combine SQL flags and ML prediction (Theme 6: Handling Challenges)
         final_decision, decision_reason = self._decide(sql_flags, is_fraud, fraud_probability)
-        
+
         # Store results in database
         result = {
             'transaction_id': transaction_data.get('transaction_id'),
@@ -181,13 +200,15 @@ class FraudDetectionSystem:
             'is_fraud': is_fraud,
             'decision': final_decision,
             'sql_flags': sql_flags,
-            'confidence': fraud_probability if is_fraud else 1 - fraud_probability
+            'confidence': fraud_probability if is_fraud else 1 - fraud_probability,
+            # one plain sentence on why, kept with the transaction so the list can show it
+            'reason': self._why(final_decision, sql_flags, rule_details, fraud_probability, transaction_data),
         }
         
         # Log transaction
         self.db_manager.log_transaction(result)
         if batch:
-            batch.stored(customer_id)
+            batch.stored(customer_id, own_time)
 
         # The explanation is for the caller only; it is not stored
         if explain:
@@ -273,12 +294,15 @@ class FraudDetectionSystem:
         if transaction['amount'] > amount_limit:
             flags['threshold_exceeded'] = True
 
-        # Check 2: Velocity anomaly (unusual transaction frequency)
+        # Check 2: Velocity anomaly (unusual transaction frequency): the customer's
+        # transactions in the hour before this one, by their own times when it has one
         if recent_count is None:
-            recent_count = len(self.db_manager.get_recent_transactions(
-                transaction['customer_id'],
-                minutes=60
-            ))
+            own_time = self._own_time(transaction)
+            if own_time is None:
+                recent = self.db_manager.get_recent_transactions(transaction['customer_id'], minutes=60)
+            else:
+                recent = self.db_manager.get_recent_transactions(transaction['customer_id'], minutes=60, at_seconds=own_time)
+            recent_count = len(recent)
         if recent_count > 10:  # More than 10 in an hour is unusual
             flags['velocity_anomaly'] = True
 
@@ -332,6 +356,44 @@ class FraudDetectionSystem:
             return 'MONITOR', 'The model scored the transaction above 0.5, but no rule check fired.'
         return 'ALLOW', 'The score is at or below 0.5 and fewer than two rule checks fired.'
     
+    @staticmethod
+    def _own_time(transaction):
+        """The transaction's own time, in seconds since the dataset's first transaction, or None"""
+        seconds = transaction.get('Time')
+        return float(seconds) if isinstance(seconds, (int, float)) and not isinstance(seconds, bool) else None
+
+    def _why(self, decision, sql_flags, rule_details, fraud_probability, transaction):
+        """One plain sentence on why the decision was reached, naming the rule checks
+        that fired and the figures they compared. It is the short form of the
+        decision reason; the model-by-model breakdown is still not stored."""
+        fired = []
+        if sql_flags['threshold_exceeded']:
+            d = rule_details['threshold_exceeded']
+            fired.append(f"the amount (UGX {d['amount'] * DEMO_UGX_PER_UNIT:,.0f}) is over 5 times the customer’s average (UGX {d['customer_average'] * DEMO_UGX_PER_UNIT:,.0f})")
+        if sql_flags['velocity_anomaly']:
+            d = rule_details['velocity_anomaly']
+            fired.append(f"{d['recent_count']} transactions in the hour before it, over the limit of {d['limit']}")
+        if sql_flags['unusual_time']:
+            seconds = transaction.get('Time', 0) or 0
+            fired.append(f"{int(seconds % 86400 // 3600):02d}:{int(seconds % 3600 // 60):02d} is an unusual time of day for this customer")
+        count = len(fired)
+        rules = '; '.join(fired)
+        plural = '' if count == 1 else 's'
+        score = f"{fraud_probability:.1%}"
+        if decision == 'BLOCK':
+            if count >= 3:
+                return f"All three rule checks fired: {rules}."
+            return f"The model score {score} is above 50% and {count} rule check{plural} fired: {rules}."
+        if decision == 'REVIEW':
+            if count >= 2:
+                return f"{count} rule checks fired: {rules}."
+            return f"The model score {score} is above 70%."
+        if decision == 'MONITOR':
+            return f"The model score {score} is above 50%, but no rule check fired."
+        if count:
+            return f"The model score {score}; only {count} rule check{plural} fired ({rules}), which is not enough to act."
+        return f"The model score {score}; no rule check fired."
+
     def _validate_transaction(self, transaction):
         """Validate transaction data (same rules as the API)"""
         return validate_transaction(transaction) is None

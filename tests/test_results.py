@@ -165,7 +165,7 @@ class TestPage:
             pytest.skip('node is not installed')
         source = (DASHBOARD / 'results.js').read_text(encoding='utf-8')
         start = source.index('function verdictText(results)')
-        end = source.index('// A few plain lines at the top')
+        end = source.index('// Five labelled lines at the top')
         arch = lambda b, d, a, sat=False: {'external_batch': {'p50_ms': b}, 'in_database': {'p50_ms': d, 'saturated': sat}, 'application': {'p50_ms': a, 'saturated': sat}}
         results = {
             'baseline': {'architectures': arch(5000, 23, 23)},
@@ -186,3 +186,124 @@ class TestPage:
         script = source[start:end] + 'console.log(verdictText(' + json.dumps(flipped) + '));'
         out = subprocess.run([node, '-e', script], capture_output=True, text=True, timeout=30).stdout.strip()
         assert out.startswith('Fastest: scoring in the application.')
+
+# ---------------------------------------------------------------- the research page: what it shows and how
+
+class TestResearchPageContent:
+    def source(self):
+        return (DASHBOARD / 'results.js').read_text(encoding='utf-8')
+
+    def html(self):
+        return (DASHBOARD / 'results.html').read_text(encoding='utf-8')
+
+    def test_the_summary_passes_on_the_mean_latency_and_the_auc_roc_that_are_in_the_files(self):
+        summary = build_summary()
+        raw = json.loads((ROOT / 'results' / 'architecture_benchmark.json').read_text(encoding='utf-8'))
+        for mode, arch in raw['architectures'].items():
+            assert summary['baseline']['architectures'][mode]['mean_ms'] == arch['decision_latency_ms']['mean']
+        roc = summary['detection']['metrics']['roc_auc']
+        assert (round(roc['value'], 3), round(roc['low'], 3), round(roc['high'], 3)) == (0.977, 0.956, 0.995)    # as in Table 11 of the report
+
+    def test_the_figures_the_page_derives_agree_with_the_report(self):
+        """Table 12 of the report: the mean, the 95th percentile and the share of one core"""
+        baseline = build_summary()['baseline']
+        a = baseline['architectures']
+        assert [round(a[m]['mean_ms']) for m in ('in_database', 'application')] == [27, 27]
+        assert round(a['external_batch']['mean_ms'] / 1000, 1) == 5.0
+        assert [round(a[m]['p95_ms']) for m in ('in_database', 'application')] == [50, 49]
+        share = {m: round(a[m]['cpu_s_per_1000'] * baseline['rate_per_s'] / 10, 1) for m in a}      # seconds per 1,000 x rate / 1,000, as a percentage
+        assert share == {'external_batch': 1.5, 'in_database': 23.7, 'application': 23.6}
+
+    def test_all_six_detection_measures_are_shown_each_with_a_plain_meaning(self):
+        source = self.source()
+        block = source[source.index('const METRICS = ['):source.index('function renderDetection')]
+        for key in ('precision', 'recall', 'f1', 'roc_auc', 'pr_auc', 'fpr'):
+            assert f'["{key}"' in block, key
+        assert len(re.findall(r'\["\w+", "[^"]+", \d, "[^"]{20,}"\]', block)) == 6          # key, name, digits, meaning
+        assert 'stat-help' in source and '95% interval' in source
+
+    def test_the_page_keeps_the_model_apart_from_where_it_runs(self):
+        html, source = self.html(), self.source()
+        assert 'Risk Score' in html and 'Detection metrics' in html and 'Decision latency' in html
+        assert 'This section is about the model, not about where it runs' in source
+        assert 'detectionScope' in html
+
+    def test_the_comparison_table_has_every_measure_and_marks_the_best(self):
+        source = self.source()
+        block = source[source.index('function renderBaseline'):source.index('// ---------- section 3')]
+        for row in ('Decision latency, mean', 'Decision latency, median', 'Decision latency, 95th percentile', 'Processor seconds per 1,000 transactions',
+                    'Processor utilization, average share of one core', 'Peak memory'):
+            assert row in block, row
+        assert 'bestFlags' in block and 'within 10%' in block
+
+    def test_the_best_is_the_lowest_value_or_within_ten_per_cent_of_it(self):
+        import shutil
+        import subprocess
+        node = shutil.which('node')
+        if not node:
+            pytest.skip('node is not installed')
+        source = self.source()
+        function = source[source.index('function bestFlags'):source.index('function renderBaseline')]
+        script = function + 'console.log(JSON.stringify([bestFlags([5000, 23, 23]), bestFlags([1.47, 23.7, 23.6]), bestFlags([100, 109, 111]), bestFlags([7, null, undefined])]));'
+        out = subprocess.run([node, '-e', script], capture_output=True, text=True, timeout=30).stdout.strip()
+        assert json.loads(out) == [[False, True, True], [True, False, False], [True, True, False], [False, False, False]]
+
+    def test_the_page_does_not_declare_a_universal_winner(self):
+        source, html = self.source(), self.html()
+        assert 'speed is not the only thing to weigh' in source
+        assert 'What each design trades' in html and 'the best choice for a bank can differ' in html
+        for claim in ('always best', 'universally', 'best architecture'):
+            assert claim not in source and claim not in html
+
+    def test_every_chart_has_a_title_axis_names_units_and_a_description(self):
+        source, html = self.source(), self.html()
+        ids = set(re.findall(r'(?:lineChart|barChart)\(document\.getElementById\("(\w+)"\)', source))
+        assert ids == {'baselineChart', 'sweepChart', 'memoryChart', 'cpuChart', 'networkChart'}
+        for chart in ids:
+            assert re.search(r'<h[34] class="(?:subhead|chart-title)">[^<]+</h[34]>\s*(?:<div>\s*)?(?:<h4[^>]*>[^<]*</h4>\s*)?<div class="chart-wrap" id="' + chart + '"', html) or \
+                re.search(r'<h4 class="chart-title">[^<]+</h4>\s*<div class="chart-wrap" id="' + chart + '"', html), chart
+        # axis names, units and an accessible description are given wherever a chart is drawn
+        assert source.count('xTitle:') >= 5 and source.count('yTitle:') >= 5 and source.count('label:') >= 5
+        assert 'Peak memory (MB)' in source and 'Transactions arriving per second' in source and 'Round trip between application and database' in source
+
+    def test_charts_use_the_same_colour_for_each_architecture_and_draw_for_the_phone(self):
+        source = self.source()
+        assert source.count('MODE_COLOR[') >= 5 and 'color: MODE_COLOR[mode]' in source
+        for line in ('external_batch: "var(--yellow)"', 'in_database: "var(--blue)"', 'application: "var(--accent)"'):
+            assert line in source
+        assert 'function isNarrow' in source and 'redrawCharts' in source and '"resize"' in source
+        css = (DASHBOARD / 'style.css').read_text(encoding='utf-8')
+        assert '.results-table.stack' in css and 'attr(data-label)' in css
+
+    def test_the_pipeline_is_a_numbered_workflow_that_says_what_the_benchmarks_cover(self):
+        html = self.html()
+        block = html[html.index('id="pipelinePanel"'):html.index('id="detectionPanel"')]
+        assert len(re.findall(r'<li class="flow-step', block)) == 8
+        moved = re.findall(r'<li class="flow-step moves">.*?<strong>(.*?)</strong>', block)
+        assert moved == ['Thirty features are built', 'Four models score it', 'Weighted average']
+        out = re.findall(r'<li class="flow-step out">.*?<strong>(.*?)</strong>', block)
+        assert out == ['Three rule checks', 'Decision']
+        assert 'XGBoost, LightGBM, a voting pair of those two, and an Isolation Forest' in block
+
+    def test_the_weights_shown_are_the_weights_in_the_code(self):
+        from advanced_ml_models import AdvancedFraudDetectionModel
+        weights = AdvancedFraudDetectionModel.ENSEMBLE_WEIGHTS
+        assert sorted(weights.values()) == [0.15, 0.15, 0.35, 0.35]
+        assert 'Weights of 35%, 35%, 15% and 15%' in self.html()
+
+    def test_the_limitations_are_listed_in_plain_view(self):
+        html, source = self.html(), self.source()
+        panel = html[html.index('id="notesPanel"'):html.index('id="learnPanel"')]
+        assert '<details' not in panel and 'id="notesList"' in panel
+        for text in ('European card transactions', 'that one machine', 'delaying relay', 'stand-ins', 'three evaluators',
+                     'do not establish fraud rates or operational performance for any Ugandan bank', 'not a validated banking deployment'):
+            assert text in source, text
+
+    def test_the_page_links_back_and_the_architectures_are_named_the_same_everywhere(self):
+        html, source = self.html(), self.source()
+        assert html.count('href="index.html"') == 2
+        index = (DASHBOARD / 'index.html').read_text(encoding='utf-8').lower()
+        for name in ('external batch', 'in-database', 'application tier'):
+            assert name in html.lower() and name in index, name
+        for label in ('External batch', 'In-database', 'Application tier'):
+            assert f'"{label}"' in source

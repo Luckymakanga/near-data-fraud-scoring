@@ -97,19 +97,27 @@ class CountingDb:
     """Stores what is logged and counts reads, like the real database would"""
 
     def __init__(self, existing=None):
-        self.logged = {c: list(range(n)) for c, n in (existing or {}).items()}
+        # what is stored for each customer is the transaction's own time (txn_time), as in the real table
+        self.logged = {c: [12 * 3600] * n for c, n in (existing or {}).items()}
         self.profile_reads = self.recent_reads = 0
 
     def get_customer_profile(self, customer_id):
         self.profile_reads += 1
         return {'avg_transaction': 100.0, 'unusual_hours_frequency': 0.05}
 
-    def get_recent_transactions(self, customer_id, minutes):
+    def get_recent_transactions(self, customer_id, minutes, at_seconds=None):
+        self.recent_reads += 1
+        times = self.logged.get(customer_id, [])
+        if at_seconds is None:
+            return list(times)
+        return [t for t in times if at_seconds - minutes * 60 < t <= at_seconds]
+
+    def get_customer_transaction_times(self, customer_id):
         self.recent_reads += 1
         return list(self.logged.get(customer_id, []))
 
     def log_transaction(self, result):
-        self.logged.setdefault(result['customer_id'], []).append(result['transaction_id'])
+        self.logged.setdefault(result['customer_id'], []).append(result['txn_time'])
 
     def log_fraud_alert(self, result):
         pass
@@ -155,6 +163,24 @@ class TestSharedReads:
         assert shared == every_time
         fired = [flags['velocity_anomaly'] for flags, _, _ in shared]
         assert fired == [False, False, False, True, True, True, True, True]
+
+    def test_the_hourly_count_follows_each_transactions_own_time(self):
+        """Eleven transactions processed in the same minute but spread over a day are not a burst:
+        only those within the hour before a transaction count, with and without the shared reads"""
+        spread = [{'transaction_id': f'S{i}', 'customer_id': 'CUST001', 'amount': 10, 'Time': 3600.0 * 2 * i} for i in range(12)]
+        burst = [{'transaction_id': f'B{i}', 'customer_id': 'CUST001', 'amount': 10, 'Time': 40000.0 + 60 * i} for i in range(12)]
+        for batched in (True, False):
+            assert not any(f['velocity_anomaly'] for f, _, _ in run(CountingDb(), spread, batched=batched))
+        fired = [f['velocity_anomaly'] for f, _, _ in run(CountingDb(), burst, batched=True)]
+        assert fired == [False] * 11 + [True]                     # the 12th has 11 in the hour before it
+        assert fired == [f['velocity_anomaly'] for f, _, _ in run(CountingDb(), burst, batched=False)]
+
+    def test_a_transaction_without_a_time_is_counted_by_when_it_was_processed(self):
+        rows = [{'transaction_id': f'N{i}', 'customer_id': 'CUST001', 'amount': 10} for i in range(3)]
+        db = CountingDb({'CUST001': 11})
+        system = system_with(db)
+        flags, _ = system._evaluate_rules(rows[0], system.db_manager.get_customer_profile('CUST001'))
+        assert flags['velocity_anomaly'] is True                  # the old count of 11 is used
 
     def test_the_context_is_not_shared_between_batches(self):
         system = system_with(CountingDb())

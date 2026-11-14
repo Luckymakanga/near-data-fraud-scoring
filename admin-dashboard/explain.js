@@ -22,6 +22,12 @@
   }
 
   const pct = (n) => `${(n * 100).toFixed(1)}%`;
+  // Amounts are shown in UGX for the demonstration, at this rate per unit of the dataset's amount
+  // (the same rate the stored reasons use). Only the writing of the amount changes, never its value.
+  window.DEMO_UGX_PER_UNIT = 4000;
+  const ugx = (n) => `UGX ${Math.round(n * window.DEMO_UGX_PER_UNIT).toLocaleString("en-US")}`;
+  // scores are stored from 0 to 1 and shown out of 100; they are a risk score, not a probability
+  const points = (n) => (n * 100).toFixed(1);
   const num = (n) => (n < 10 && n !== Math.round(n)
     ? n.toFixed(2)
     : Math.round(n).toLocaleString());
@@ -39,7 +45,7 @@
     const wrap = node("div", "table-wrap");
     const table = node("table", "results-table explain-table");
     const head = node("tr");
-    ["Model", "Its own score", "Weight", "Adds to the total"].forEach((t) => head.append(node("th", "", t)));
+    ["Model", "Its own score (out of 100)", "Weight", "Adds to the total"].forEach((t) => head.append(node("th", "", t)));
     const thead = node("thead");
     thead.append(head);
     table.append(thead);
@@ -57,16 +63,16 @@
       const fill = node("div", "score-fill");
       fill.style.width = `${Math.max(0, Math.min(1, c.score)) * 100}%`;
       bar.append(fill);
-      score.append(node("div", "", pct(c.score)), bar);
+      score.append(node("div", "", points(c.score)), bar);
 
-      row.append(label, score, node("td", "", `${Math.round(c.weight * 100)}%`), node("td", "", pct(c.contribution)));
+      row.append(label, score, node("td", "", `${Math.round(c.weight * 100)}%`), node("td", "", points(c.contribution)));
       body.append(row);
     });
 
     const total = node("tr", "explain-total");
-    const label = node("td", "", "Fraud score");
+    const label = node("td", "", "Risk Score");
     label.colSpan = 3;
-    total.append(label, node("td", "", pct(models.final_score)));
+    total.append(label, node("td", "", `${points(models.final_score)}/100`));
     body.append(total);
 
     table.append(body);
@@ -92,7 +98,7 @@
       list.append(ruleRow(
         !!flags.threshold_exceeded,
         "Unusually large amount",
-        `Amount ${num(a.amount)} against a limit of ${num(a.limit)}, which is five times this customer's average of ${num(a.customer_average)}.`,
+        `Amount ${ugx(a.amount)} against a limit of ${ugx(a.limit)}, which is five times this customer's average of ${ugx(a.customer_average)}.`,
       ));
     }
 
@@ -131,18 +137,30 @@
     const inputs = step(1, "What the models are given");
     inputs.append(node("p", "", "Thirty numbers per transaction: the time of day, the 28 anonymized components from the source dataset, and the amount. The components carry no readable meaning, so the models cannot say which input drove a score; only which models and rules did."));
 
-    const models = step(2, "Four models each give a score; a weighted average is the fraud score");
+    const models = step(2, "Four models each give a score; a weighted average is the Risk Score");
     models.append(modelsTable(info.models));
-    models.append(node("p", "table-note", "A fifth model, a One-Class SVM, is trained but has no weight, so it does not affect the score. Above 0.5 counts as fraud; above 0.7 is sent for review."));
+    models.append(node("p", "table-note", "A fifth model, a One-Class SVM, is trained but has no weight, so it does not affect the score. A Risk Score above 50 counts as a fraud signal and above 70 is sent for review. It is a combined ranking from the models, not a calibrated probability."));
 
     const rules = step(3, "Three rule checks look at the customer's history");
     if (info.rules) rules.append(rulesList(result.sql_flags || {}, info.rules));
     rules.append(node("p", "table-note", "Only the model's score has been tested against known fraud labels; these rules and the decision labels have not."));
 
     const decision = step(4, "The decision");
+    const kind = /^[A-Z]+$/.test(result.decision) ? result.decision : "ALLOW";
+    const flow = node("div", "why-flow");
+    const scoreTile = node("div", "why-tile");
+    scoreTile.append(node("span", "why-label", "Risk Score"),
+      node("strong", "", isNum(result.fraud_score) ? `${points(result.fraud_score)}/100` : "–"));
+    const decisionTile = node("div", "why-tile");
+    decisionTile.append(node("span", "why-label", "System decision"), node("span", `badge decision-${kind}`, String(result.decision)));
+    const arrow = node("span", "why-arrow", "→");
+    arrow.setAttribute("aria-hidden", "true");
+    flow.append(scoreTile, arrow, decisionTile);
+    decision.append(flow);
+
     const line = node("p", "explain-decision");
-    line.append(node("span", `badge decision-${/^[A-Z]+$/.test(result.decision) ? result.decision : "ALLOW"}`, String(result.decision)));
-    line.append(document.createTextNode(` ${info.decision_reason || ""}`));
+    line.append(node("span", "why-label", "Reason "));
+    line.append(document.createTextNode(info.decision_reason || "Explanation unavailable."));
     decision.append(line);
 
     root.append(inputs, models, rules, decision);
