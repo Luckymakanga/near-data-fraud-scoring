@@ -48,13 +48,13 @@ class TestReason:
         system = make_system(recent=0)                        # the stand-in model scores 0.8 or so
         result = system.process_transaction(dict(TXN, amount=900.0, Time=12 * 3600))
         assert result['decision'] == 'BLOCK'
-        assert 'above 50%' in result['reason'] and '1 rule check fired' in result['reason']
+        assert 'above 50 and 1 rule check fired' in result['reason'] and '/100 is above 50' in result['reason']
         assert 'over 5 times' in result['reason']
 
     def test_review_by_score_alone_and_monitor_say_no_rule_fired_where_that_is_true(self):
         review = make_system(model=make_model(xgboost=FixedProba(0.99), lightgbm=FixedProba(0.99), voting_ensemble=FixedProba(0.99)))
         result = review.process_transaction(dict(TXN))
-        assert result['decision'] == 'REVIEW' and 'above 70%' in result['reason']
+        assert result['decision'] == 'REVIEW' and 'is above 70.' in result['reason']
         monitor = make_system(model=make_model(xgboost=FixedProba(0.62), lightgbm=FixedProba(0.62), voting_ensemble=FixedProba(0.62)))
         result = monitor.process_transaction(dict(TXN))
         assert result['decision'] == 'MONITOR' and 'no rule check fired' in result['reason']
@@ -108,6 +108,31 @@ class TestReason:
         assert 'ALTER TABLE transactions ADD COLUMN IF NOT EXISTS reason TEXT' in create
         log = source.split('def log_transaction')[1].split('def log_fraud_alert')[0]
         assert 'status, reason)' in log and log.count('%s') == 10 and "transaction_data.get('reason')" in log
+
+
+class TestWordingMatchesTheDashboard:
+    """The stored reason and the explanation use the dashboard's words: a Risk Score on a 0 to 100 scale with the same cut-offs"""
+
+    def test_the_cut_offs_in_the_words_are_the_cut_offs_the_dashboard_shows(self):
+        script = (DASHBOARD / 'script.js').read_text(encoding='utf-8')
+        assert 'const SCORE_THRESHOLDS = { fraud: 50, review: 70 }' in script
+        system = make_system()
+        none = dict.fromkeys(['threshold_exceeded', 'velocity_anomaly', 'unusual_time'], False)
+        one = dict(none, threshold_exceeded=True)
+        reasons = [system._decide(one, True, 0.9)[1], system._decide(none, True, 0.8)[1], system._decide(none, True, 0.6)[1], system._decide(none, False, 0.2)[1]]
+        assert reasons == ['The Risk Score is above 50 and at least one rule check fired.', 'The Risk Score is above 70.',
+                           'The Risk Score is above 50, but no rule check fired.', 'The Risk Score is at or below 50 and fewer than two rule checks fired.']
+
+    def test_no_reason_calls_the_score_a_model_score_or_gives_it_as_a_percentage(self):
+        for model in (make_model(xgboost=FixedProba(0.99), lightgbm=FixedProba(0.99), voting_ensemble=FixedProba(0.99)),
+                      make_model(xgboost=FixedProba(0.62), lightgbm=FixedProba(0.62), voting_ensemble=FixedProba(0.62)),
+                      make_model(xgboost=FixedProba(0.1), lightgbm=FixedProba(0.1), voting_ensemble=FixedProba(0.1))):
+            reason = make_system(model=model).process_transaction(dict(TXN))['reason']
+            assert reason.startswith('The Risk Score ') and '/100' in reason and '%' not in reason and 'model score' not in reason, reason
+
+    def test_the_decisions_and_the_stored_score_are_unchanged(self):
+        result = make_system().process_transaction(dict(TXN))
+        assert 0 < result['fraud_score'] < 1 and result['decision'] in ('ALLOW', 'MONITOR', 'REVIEW', 'BLOCK')
 
 
 # ---------------------------------------------------------------- the date and time

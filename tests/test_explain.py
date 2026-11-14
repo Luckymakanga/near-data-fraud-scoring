@@ -196,9 +196,9 @@ class TestDecision:
         assert 'All three' in system._decide(three, False, 0.1)[1]
         assert 'at least one rule' in system._decide(one, True, 0.9)[1]
         assert 'Two rule checks' in system._decide(two, False, 0.1)[1]
-        assert '0.7' in system._decide(none, True, 0.8)[1]
+        assert 'above 70' in system._decide(none, True, 0.8)[1]
         assert 'no rule check fired' in system._decide(none, True, 0.6)[1]
-        assert 'at or below 0.5' in system._decide(none, False, 0.2)[1]
+        assert 'at or below 50' in system._decide(none, False, 0.2)[1]
 
 
 class TestRules:
