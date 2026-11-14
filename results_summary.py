@@ -31,6 +31,7 @@ def _row(arch):
     latency = arch['decision_latency_ms']
     memory = arch.get('peak_memory_mb') or {}
     return {
+        'mean_ms': latency['mean'],
         'p50_ms': latency['p50'],
         'p95_ms': latency['p95'],
         'p99_ms': latency['p99'],
@@ -58,7 +59,7 @@ def _detection(data):
     real = ensemble['real_prevalence']
     interval = data['ensemble_ci_95_real_prevalence']
     metrics = {name: {'value': real[name], 'low': interval[name][0], 'high': interval[name][1]}
-               for name in ('precision', 'recall', 'f1', 'pr_auc', 'fpr')}
+               for name in ('precision', 'recall', 'f1', 'roc_auc', 'pr_auc', 'fpr')}
     return {
         'metrics': metrics,
         'precision_before_prevalence_restored': ensemble['as_sampled']['precision'],

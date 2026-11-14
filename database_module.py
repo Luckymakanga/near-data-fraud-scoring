@@ -131,9 +131,12 @@ class DatabaseManager:
                     fraud_score REAL,
                     is_fraud INTEGER,
                     decision TEXT,
-                    status TEXT
+                    status TEXT,
+                    reason TEXT
                 )
             ''')
+            # a database made before the reason was kept gets the column here
+            cursor.execute('ALTER TABLE transactions ADD COLUMN IF NOT EXISTS reason TEXT')
 
             # Create indexes for query optimization (Theme 5: SQL Optimization)
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_customer_id ON transactions(customer_id)')
@@ -230,8 +233,8 @@ class DatabaseManager:
             cursor.execute('''
                 INSERT INTO transactions
                 (transaction_id, customer_id, amount, txn_time,
-                 timestamp, fraud_score, is_fraud, decision, status)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                 timestamp, fraud_score, is_fraud, decision, status, reason)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ''', (
                 transaction_data.get('transaction_id'),
                 transaction_data.get('customer_id'),
@@ -241,7 +244,8 @@ class DatabaseManager:
                 transaction_data.get('fraud_score'),
                 1 if transaction_data.get('is_fraud') else 0,
                 transaction_data.get('decision'),
-                'PROCESSED'
+                'PROCESSED',
+                transaction_data.get('reason')
             ))
             conn.commit()
         except psycopg2.Error as e:
@@ -327,14 +331,27 @@ class DatabaseManager:
         finally:
             self._putconn(conn)
 
-    def get_recent_transactions(self, customer_id, minutes=60):
+    def get_recent_transactions(self, customer_id, minutes=60, at_seconds=None):
         """
         Get recent transactions for velocity check (Theme 5: SQL Optimization)
-        Uses indexed query for fast retrieval
+        Uses indexed query for fast retrieval.
+
+        With at_seconds (a transaction's own time, in seconds since the dataset's first
+        transaction) it returns the customer's transactions in the `minutes` before that
+        time, by their own times. Without it, it returns those processed in the last
+        `minutes` by the wall clock.
         """
         conn = self._getconn()
         try:
             cursor = conn.cursor(cursor_factory=RealDictCursor)
+            if at_seconds is not None:
+                cursor.execute('''
+                    SELECT * FROM transactions
+                    WHERE customer_id = %s AND txn_time > %s AND txn_time <= %s
+                    ORDER BY txn_time DESC
+                ''', (customer_id, at_seconds - minutes * 60, at_seconds))
+                return [dict(row) for row in cursor.fetchall()]
+
             cutoff_time = datetime.now() - timedelta(minutes=minutes)
 
             cursor.execute('''
@@ -347,6 +364,22 @@ class DatabaseManager:
         except psycopg2.Error as e:
             conn.rollback()
             print(f"Error retrieving recent transactions: {e}")
+            return []
+        finally:
+            self._putconn(conn)
+
+    def get_customer_transaction_times(self, customer_id):
+        """The own times (seconds since the dataset's first transaction) of every transaction
+        stored for a customer, so a batch can count a customer's hourly activity without
+        asking the database again for each row"""
+        conn = self._getconn()
+        try:
+            cursor = conn.cursor()
+            cursor.execute('SELECT txn_time FROM transactions WHERE customer_id = %s AND txn_time IS NOT NULL', (customer_id,))
+            return [float(row[0]) for row in cursor.fetchall()]
+        except psycopg2.Error as e:
+            conn.rollback()
+            print(f"Error retrieving transaction times: {e}")
             return []
         finally:
             self._putconn(conn)

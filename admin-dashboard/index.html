@@ -47,11 +47,11 @@
       <div class="about-grid">
         <div>
           <h3>What it is</h3>
-          <p>A university research prototype that gives each card transaction a fraud score from 0 to 1 and a decision, and shows how that decision was reached. It is part of a study of where fraud scoring should run in a bank: outside the database, inside it, or in the application.</p>
+          <p>A university research prototype that gives each card transaction a risk score from 0 to 100 and a decision, and shows how that decision was reached. It is part of a study of where fraud scoring should run in a bank: in a separate batch job (external batch), inside the database (in-database) or in the application (application tier).</p>
         </div>
         <div>
           <h3>About the data</h3>
-          <p>The transactions come from a public dataset of European card payments, not from any bank. Fields V1 to V28 are anonymised numbers with no human meaning, so there is no location, branch or merchant. Customer names are demo labels.</p>
+          <p>The transactions come from a public dataset of European card payments, not from any bank. Fields V1 to V28 are anonymised numbers with no human meaning, so there is no location, branch or merchant. Customer names are demo labels, and amounts are shown in UGX for the demonstration, at UGX 4,000 for each unit of the dataset&rsquo;s amount. Only the way an amount is written changes; the stored amounts, the model&rsquo;s inputs and the decisions do not.</p>
         </div>
         <div>
           <h3>What to try</h3>
@@ -64,7 +64,7 @@
         </div>
         <div>
           <h3>What the numbers mean</h3>
-          <p><strong>Decision:</strong> BLOCK stops the payment, REVIEW sends it to an analyst, MONITOR allows it but watches it, ALLOW has no concern. <strong>Flagged</strong> means the model judged it fraud. <strong>Prevention rate</strong> is the share of the money in all transactions that was in flagged ones.</p>
+          <p><strong>Risk Score:</strong> the models&rsquo; combined score out of 100. It is a ranking, not a probability. <strong>Decision:</strong> BLOCK stops the payment, REVIEW sends it to an analyst, MONITOR allows it but watches it, ALLOW has no concern. <strong>Flagged</strong> means the model judged it fraud. <strong>Prevention rate</strong> is the share of the money in all transactions that was in flagged ones.</p>
         </div>
       </div>
     </details>
@@ -116,14 +116,14 @@
 
     <section class="panel">
       <h2>Upload a Dataset</h2>
-      <p class="panel-hint">Upload a CSV with the same columns as the training data (<code>Time, V1..V28, Amount</code>, optional <code>Class</code> for comparison) and every row gets scored by the trained model. Up to 500 rows per upload.</p>
+      <p class="panel-hint">Upload a CSV with the same columns as the training data (<code>Time, V1..V28, Amount</code>, optional <code>Class</code> for comparison) and every row gets scored by the trained model. Up to 500 rows per upload. Each row is given its own demo customer (row 1 to CUST001, row 2 to CUST002, and so on round again) and all rows are saved and appear under Recent Transactions. The choice below only decides which customer&rsquo;s rows are listed under this form.</p>
       <form class="upload-form" id="uploadForm">
         <select id="uCustomer">
-          <option value="ROTATE" selected>Rotate across all demo customers</option>
-          <option>CUST001</option><option>CUST002</option><option>CUST003</option>
-          <option>CUST004</option><option>CUST005</option><option>CUST006</option>
-          <option>CUST007</option><option>CUST008</option><option>CUST009</option>
-          <option>CUST010</option>
+          <option value="ALL" selected>List all customers&rsquo; transactions</option>
+          <option value="CUST001">List only CUST001</option><option value="CUST002">List only CUST002</option><option value="CUST003">List only CUST003</option>
+          <option value="CUST004">List only CUST004</option><option value="CUST005">List only CUST005</option><option value="CUST006">List only CUST006</option>
+          <option value="CUST007">List only CUST007</option><option value="CUST008">List only CUST008</option><option value="CUST009">List only CUST009</option>
+          <option value="CUST010">List only CUST010</option>
         </select>
         <input type="file" id="uFile" accept=".csv" required />
         <button type="submit" class="btn primary" id="uploadBtn">Upload &amp; Analyze</button>
@@ -136,7 +136,7 @@
               <th>Transaction</th>
               <th>Customer</th>
               <th>Amount</th>
-              <th>Fraud Score</th>
+              <th>Risk Score</th>
               <th>Decision</th>
               <th>Actual</th>
             </tr>
@@ -177,20 +177,19 @@
         <button type="button" class="pill decision-ALLOW" data-decision="ALLOW">Allow</button>
       </div>
       <div class="table-wrap">
-        <table class="tx-table">
+        <table class="tx-table stacked">
           <thead>
             <tr>
-              <th>Time</th>
-              <th>Transaction</th>
+              <th>Date &amp; Time</th>
+              <th>Transaction ID</th>
               <th>Customer</th>
-              <th>Time of Day</th>
               <th>Amount</th>
-              <th>Fraud Score</th>
-              <th>Decision</th>
+              <th>Risk Score</th>
+              <th>Decision <span class="th-hint">(select a row for why)</span></th>
             </tr>
           </thead>
           <tbody id="txTableBody">
-            <tr><td colspan="7" class="table-empty">Loading&hellip;</td></tr>
+            <tr><td colspan="6" class="table-empty">Loading&hellip;</td></tr>
           </tbody>
         </table>
       </div>

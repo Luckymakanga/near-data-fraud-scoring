@@ -147,7 +147,7 @@ class StubDb:
     def get_customer_profile(self, customer_id):
         return {'avg_transaction': 100.0, 'unusual_hours_frequency': 0.05}
 
-    def get_recent_transactions(self, customer_id, minutes):
+    def get_recent_transactions(self, customer_id, minutes, at_seconds=None):
         return [object()] * self.recent
 
     def log_transaction(self, result):

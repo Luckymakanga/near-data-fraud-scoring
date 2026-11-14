@@ -249,15 +249,24 @@ function fmtTime(iso) {
   return d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
+// Amounts are shown in UGX for the demonstration, at window.DEMO_UGX_PER_UNIT shillings for each
+// unit of the dataset's amount (set in explain.js, and used by the stored reasons too). The stored
+// amount, the model's inputs and the rule checks are not scaled; only how it is written.
 function fmtAmount(n) {
   if (typeof n !== "number") return "–";
-  return Math.round(n).toLocaleString();
+  return `UGX ${Math.round(n * window.DEMO_UGX_PER_UNIT).toLocaleString("en-US")}`;
 }
 
+// The stored score is 0 to 1 and is not changed; it is only shown as a number out of 100.
+// The ensemble's weighted average has not been calibrated, so it is called a Risk Score,
+// never a probability.
 function fmtScore(n) {
   if (typeof n !== "number") return "–";
-  return `${(n * 100).toFixed(1)}%`;
+  return `${(n * 100).toFixed(1)}/100`;
 }
+
+// The cut-offs the decision logic uses (fraud_detection_system.py, _decide), out of 100
+const SCORE_THRESHOLDS = { fraud: 50, review: 70 };
 
 function fmtTimeOfDay(seconds) {
   if (typeof seconds !== "number") return "–";
@@ -266,6 +275,22 @@ function fmtTimeOfDay(seconds) {
   const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0");
   return `${h}:${m}`;
 }
+
+// The date and time of the transaction itself. The dataset's Time is the seconds since its
+// first transaction, over two days in September 2013 (it gives the month, not the exact day,
+// so its first day is shown as 1 September). The date and the time of day come from the same
+// number, so the Date and Time column always agrees with the Time of Day column.
+const TRANSACTION_CLOCK_START = Date.UTC(2013, 8, 1);
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function fmtDateTime(seconds) {
+  if (typeof seconds !== "number") return "–";
+  const d = new Date(TRANSACTION_CLOCK_START + Math.floor(seconds) * 1000);
+  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}, ${fmtTimeOfDay(seconds)}`;
+}
+
+const DECISION_WORDS = { BLOCK: "blocked", REVIEW: "sent for review", MONITOR: "put on monitor", ALLOW: "allowed" };
+const openDetails = new Set();   // transactions whose reason is open, kept across refreshes
 
 let decisionFilter = "";
 
@@ -277,7 +302,7 @@ async function loadTransactions() {
     const emptyMsg = decisionFilter
       ? `No ${decisionFilter} transactions yet.`
       : "No transactions yet — analyze one above, or run the full system to generate sample data.";
-    el.txTableBody.innerHTML = `<tr><td colspan="7" class="table-empty">${emptyMsg}</td></tr>`;
+    el.txTableBody.innerHTML = `<tr><td colspan="6" class="table-empty">${emptyMsg}</td></tr>`;
     return;
   }
 
@@ -285,26 +310,68 @@ async function loadTransactions() {
     .map((tx) => {
       const decision = esc(tx.decision || "—");
       const customerId = esc(tx.customer_id ?? "");
+      const id = esc(tx.transaction_id ?? "");
+      // the transaction's own date and time; a row without one shows when it was processed
+      const when = typeof tx.txn_time === "number" ? fmtDateTime(tx.txn_time) : fmtTime(tx.timestamp);
+      const open = openDetails.has(tx.transaction_id);
+      const word = DECISION_WORDS[tx.decision] || "decided";
+      // the stored reason is shown as it is; when none was stored, say so and invent nothing
+      const reason = tx.reason
+        ? `<p class="why-reason">${esc(tx.reason)}</p>`
+        : `<p class="why-reason why-missing"><strong>Explanation unavailable.</strong> No reason was stored for this transaction because it was analyzed before the system began keeping reasons. Analyze it again to get one.</p>`;
       return `
-        <tr>
-          <td>${fmtTime(tx.timestamp)}</td>
-          <td><code>${esc(tx.transaction_id ?? "–")}</code></td>
-          <td>${customerId ? `<button type="button" class="customer-link" data-customer="${customerId}">${customerId}</button>` : "–"}</td>
-          <td>${fmtTimeOfDay(tx.txn_time)}</td>
-          <td>${fmtAmount(tx.amount)}</td>
-          <td>${fmtScore(tx.fraud_score)}</td>
-          <td><span class="badge decision-${decision}">${decision}</span></td>
+        <tr class="tx-row${open ? " selected" : ""}">
+          <td data-label="Date &amp; Time" title="Processed ${esc(fmtTime(tx.timestamp))}">${when}</td>
+          <td data-label="Transaction ID"><code>${id || "–"}</code></td>
+          <td data-label="Customer">${customerId ? `<button type="button" class="customer-link" data-customer="${customerId}">${customerId}</button>` : "–"}</td>
+          <td data-label="Amount">${fmtAmount(tx.amount)}</td>
+          <td data-label="Risk Score">${fmtScore(tx.fraud_score)}</td>
+          <td data-label="Decision"><button type="button" class="badge decision-btn decision-${decision}" data-tx="${id}" aria-expanded="${open}" title="Select to see why">${decision}</button></td>
+        </tr>
+        <tr class="tx-detail"${open ? "" : " hidden"}>
+          <td colspan="6">
+            <div class="why-box decision-${decision}">
+              <h4 class="why-title">Why this transaction was ${word}</h4>
+              <div class="why-flow" aria-label="Risk score leads to decision">
+                <div class="why-tile"><span class="why-label">Risk Score</span><strong>${fmtScore(tx.fraud_score)}</strong></div>
+                <span class="why-arrow" aria-hidden="true">→</span>
+                <div class="why-tile"><span class="why-label">System decision</span><span class="badge decision-${decision}">${decision}</span></div>
+              </div>
+              <div class="why-section"><span class="why-label">Reason</span>${reason}</div>
+              <div class="why-section"><span class="why-label">How the decision is reached</span>
+                <p class="why-meta">A risk score above ${SCORE_THRESHOLDS.fraud} counts as a fraud signal and above ${SCORE_THRESHOLDS.review} is sent for review. The three rule checks count as well, so the score alone does not fix the decision.</p></div>
+              <div class="why-section"><span class="why-label">Transaction</span>
+                <p class="why-meta">${id || "–"} · ${customerId || "no customer"} · amount ${fmtAmount(tx.amount)} · ${when}</p></div>
+            </div>
+          </td>
         </tr>`;
     })
     .join("");
 }
 
+function toggleDetails(row) {
+  const button = row.querySelector(".decision-btn");
+  const detail = row.nextElementSibling;
+  if (!button || !detail) return;
+  const open = detail.hidden;                        // it is about to open
+  detail.hidden = !open;
+  row.classList.toggle("selected", open);
+  button.setAttribute("aria-expanded", String(open));
+  if (open) openDetails.add(button.dataset.tx);
+  else openDetails.delete(button.dataset.tx);
+}
+
 el.txTableBody.addEventListener("click", (e) => {
   const link = e.target.closest(".customer-link");
-  if (!link) return;
-  el.lCustomer.value = link.dataset.customer;
-  lookupCustomer(link.dataset.customer);
-  el.profileCard.scrollIntoView({ behavior: "smooth", block: "center" });
+  if (link) {
+    el.lCustomer.value = link.dataset.customer;
+    lookupCustomer(link.dataset.customer);
+    el.profileCard.scrollIntoView({ behavior: "smooth", block: "center" });
+    return;
+  }
+  // the decision button, or anywhere else on the row, opens the reason under it
+  const row = e.target.closest("tr.tx-row");
+  if (row) toggleDetails(row);
 });
 
 el.filterPills.addEventListener("click", (e) => {
@@ -341,6 +408,36 @@ function fmtFreq(n) {
   return `${(n * 100).toFixed(0)}%`;
 }
 
+// The overall risk on a customer's record is one of three labels the system stores:
+// LOW_RISK, NORMAL and HIGH_ACTIVITY. They are shown as LOW, MEDIUM and HIGH RISK (a wording
+// change only; the stored label is shown beside it and nothing is recalculated). A label that
+// is missing or not one of these is shown as it is, never replaced by a guess.
+const CUSTOMER_RISK = {
+  LOW_RISK: { word: "LOW RISK", level: "LOW" },
+  NORMAL: { word: "MEDIUM RISK", level: "MEDIUM" },
+  HIGH_ACTIVITY: { word: "HIGH RISK", level: "HIGH" },
+};
+
+function customerRisk(stored) {
+  if (CUSTOMER_RISK[stored]) return { ...CUSTOMER_RISK[stored], stored };
+  return { word: stored ? String(stored).replace(/_/g, " ") : "NOT CLASSIFIED", level: "NONE", stored: stored || null };
+}
+
+// How many of a customer's recent decisions fall in each category, counted from the list the
+// API returned (the latest ten at most); nothing is added.
+const DECISION_SUMMARY = [
+  ["ALLOW", "Allowed"],
+  ["REVIEW", "Sent for review"],
+  ["BLOCK", "Blocked"],
+  ["MONITOR", "On monitor"],
+];
+
+function countDecisions(list) {
+  const counts = { ALLOW: 0, REVIEW: 0, BLOCK: 0, MONITOR: 0 };
+  (list || []).forEach((d) => { if (d in counts) counts[d] += 1; });
+  return counts;
+}
+
 async function lookupCustomer(customerId) {
   el.profileCard.hidden = false;
   el.profileCard.className = "profile-card";
@@ -349,44 +446,63 @@ async function lookupCustomer(customerId) {
   try {
     const { profile } = await apiFetch(`/api/customers/${encodeURIComponent(customerId)}/risk-profile`);
 
+    // a customer with no record comes back without a name; the name itself is never shown
     if (!profile || !profile.name) {
       el.profileCard.className = "profile-card not-found";
       el.profileCard.textContent = `No profile on file for ${customerId} — this customer has no transaction history yet.`;
       return;
     }
 
-    const risk = esc(profile.risk_level || "NORMAL");
-    const decisions = profile.recent_decisions && profile.recent_decisions.length
-      ? profile.recent_decisions.map((d) => `<span class="merchant-chip badge decision-${esc(d)}">${esc(d)}</span>`).join("")
-      : `<span class="merchant-chip">none yet</span>`;
+    const risk = customerRisk(profile.risk_level);
+    const recent = Array.isArray(profile.recent_decisions) ? profile.recent_decisions : [];
+    const counts = countDecisions(recent);
+    const summary = DECISION_SUMMARY
+      .map(([key, word]) => `<li class="count-item${counts[key] ? "" : " zero"}"><span class="badge decision-${key}">${esc(counts[key])}</span> ${esc(word)}</li>`)
+      .join("");
+    const chips = recent.map((d) => `<span class="badge decision-${esc(d)}">${esc(d)}</span>`).join("");
 
     el.profileCard.className = "profile-card";
     el.profileCard.innerHTML = `
       <div class="profile-head">
-        <div>
-          <h3>${esc(profile.name)}</h3>
-          <span class="profile-id">${esc(profile.customer_id)} &middot; ${esc(profile.account_type || "–")}</span>
-        </div>
-        <span class="risk-badge risk-${risk}">${risk}</span>
+        <h3>Customer ID: ${esc(profile.customer_id)}</h3>
+        <span class="profile-category">${esc(profile.account_type || "–")} customer</span>
       </div>
-      <div class="profile-grid">
-        <div class="profile-field">
-          <span class="field-label">Avg Transaction</span>
-          <span class="field-value">${fmtAmount(profile.avg_transaction)}</span>
+
+      <section class="profile-section">
+        <h4 class="profile-heading">Overall Customer Risk</h4>
+        <div class="risk-line">
+          <span class="risk-badge risk-${risk.level}">${esc(risk.word)}</span>
+          ${risk.stored ? `<span class="risk-stored">System classification: ${esc(risk.stored)}</span>` : ""}
         </div>
-        <div class="profile-field">
-          <span class="field-label">Last Location</span>
-          <span class="field-value">${esc(profile.last_location || "–")}</span>
+        <p class="profile-note">This is the customer&rsquo;s standing risk profile, held on their record. It is not the result of any single transaction, so one blocked transaction does not change it.</p>
+      </section>
+
+      <section class="profile-section">
+        <h4 class="profile-heading">Risk Indicators</h4>
+        <div class="profile-grid">
+          <div class="profile-field">
+            <span class="field-label">Average transaction amount</span>
+            <span class="field-value">${fmtAmount(profile.avg_transaction)}</span>
+          </div>
+          <div class="profile-field">
+            <span class="field-label">Last transaction location</span>
+            <span class="field-value">${esc(profile.last_location || "–")}</span>
+          </div>
+          <div class="profile-field">
+            <span class="field-label">Unusual-hours transactions</span>
+            <span class="field-value">${fmtFreq(profile.unusual_hours_frequency)}${typeof profile.unusual_hours_frequency === "number" ? " of transactions" : ""}</span>
+          </div>
         </div>
-        <div class="profile-field">
-          <span class="field-label">Unusual Hours Freq.</span>
-          <span class="field-value">${fmtFreq(profile.unusual_hours_frequency)}</span>
-        </div>
-      </div>
-      <div class="profile-field">
-        <span class="field-label">Recent Decisions</span>
-        <div class="profile-merchants">${decisions}</div>
-      </div>
+      </section>
+
+      <section class="profile-section">
+        <h4 class="profile-heading">Recent Transaction Decisions</h4>
+        ${recent.length
+          ? `<ul class="count-list" aria-label="Decisions on this customer's latest ${recent.length} transactions">${summary}</ul>
+             <div class="profile-merchants" aria-label="Newest first">${chips}</div>
+             <p class="profile-note">Counts cover this customer&rsquo;s latest ${recent.length} analyzed transaction${recent.length === 1 ? "" : "s"}, newest first. Each is a decision on one transaction, separate from the overall risk above: a customer can be LOW RISK overall and still have a transaction blocked.</p>`
+          : `<p class="profile-note">No transactions have been analyzed for this customer yet.</p>`}
+      </section>
     `;
   } catch (err) {
     el.profileCard.className = "profile-card not-found";
@@ -419,7 +535,7 @@ el.loadSampleBtn.addEventListener("click", async () => {
 
     el.samplePreview.innerHTML = `
       Loaded <code>${esc(transaction.transaction_id)}</code> &mdash;
-      amount ${fmtAmount(transaction.amount)}, time-of-day ${fmtTimeOfDay(transaction.Time)}.
+      amount ${fmtAmount(transaction.amount)}, ${fmtDateTime(transaction.Time)}.
       Pick a customer, then Analyze to see the model's verdict.
     `;
     el.analyzeBtn.disabled = !el.aCustomer.value;
@@ -454,12 +570,16 @@ el.analyzeForm.addEventListener("submit", async (e) => {
 
     el.analyzeResult.className = `analyze-result decision-${esc(result.decision)}`;
     el.analyzeResult.innerHTML = `
-      <strong>${esc(result.decision)}</strong> — fraud score ${fmtScore(result.fraud_score)}
-      for <code>${esc(result.transaction_id)}</code> (${esc(result.customer_id)}, ${fmtAmount(result.amount)})${matchNote}<br/>
-      Flags: ${Object.entries(result.sql_flags || {})
+      <div class="why-flow" aria-label="Risk score leads to decision">
+        <div class="why-tile"><span class="why-label">Risk Score</span><strong>${fmtScore(result.fraud_score)}</strong></div>
+        <span class="why-arrow" aria-hidden="true">→</span>
+        <div class="why-tile"><span class="why-label">System decision</span><span class="badge decision-${esc(result.decision)}"><strong>${esc(result.decision)}</strong></span></div>
+      </div>
+      <p class="why-meta">For <code>${esc(result.transaction_id)}</code> (${esc(result.customer_id)}, amount ${fmtAmount(result.amount)})${matchNote}<br/>
+      Rule checks that fired: ${Object.entries(result.sql_flags || {})
         .filter(([, v]) => v)
         .map(([k]) => esc(k))
-        .join(", ") || "none"}
+        .join(", ") || "none"}</p>
     `;
     el.analyzeResult.hidden = false;
 
@@ -526,13 +646,17 @@ el.uploadForm.addEventListener("submit", async (e) => {
 
     const truncated = rows.length > 500;
     const useRows = rows.slice(0, 500);
-    const fixedCustomer = el.uCustomer.value !== "ROTATE" ? el.uCustomer.value : null;
+    // Every row belongs to its own customer, fixed by its place in the file (row 1 is the first
+    // demo customer, row 2 the second, and so on round again). The choice above only decides
+    // which customer's rows are listed in the table under the form; all rows are analyzed and
+    // saved under their own customers and all appear in Recent Transactions.
+    const onlyCustomer = el.uCustomer.value !== "ALL" ? el.uCustomer.value : null;
 
     const trueLabels = new Map(); // transaction_id -> "FRAUD" | "NORMAL" | null
 
     const transactions = useRows.map((row, i) => {
       const transactionId = `TXN${Date.now().toString(36).toUpperCase()}${i}`;
-      const customerId = fixedCustomer || DEMO_CUSTOMERS[i % DEMO_CUSTOMERS.length];
+      const customerId = DEMO_CUSTOMERS[i % DEMO_CUSTOMERS.length];
 
       if (row.Class !== undefined && row.Class !== "") {
         trueLabels.set(transactionId, Number(row.Class) === 1 ? "FRAUD" : "NORMAL");
@@ -591,13 +715,19 @@ el.uploadForm.addEventListener("submit", async (e) => {
       : stoppedEarly
         ? `<br/>Stopped early after repeated errors on the server; ${results.length} of ${total} were analyzed.`
         : "";
+    // the rows listed below the form: everything, or only the chosen customer's
+    const shown = onlyCustomer ? results.filter((r) => r.customer_id === onlyCustomer) : results;
+    const shownFraud = shown.filter((r) => r.is_fraud).length;
+    const customersNote = onlyCustomer
+      ? `<br/>Showing the ${shown.length} transaction${shown.length === 1 ? "" : "s"} that belong to <strong>${esc(onlyCustomer)}</strong>: <strong>${esc(shownFraud)}</strong> flagged as fraud${shown.length ? ` (${((shownFraud / shown.length) * 100).toFixed(1)}%)` : ""}. The other ${results.length - shown.length} were analyzed under their own customers and are in Recent Transactions.`
+      : `<br/>Each transaction was given its own customer, so they are spread across ${esc(DEMO_CUSTOMERS.length)} customers in Recent Transactions.`;
     el.uploadResult.className = failure || stoppedEarly ? "upload-result error" : "upload-result";
     el.uploadResult.innerHTML = `
       Analyzed <strong>${esc(results.length)}</strong> transaction${results.length === 1 ? "" : "s"}${truncNote}${errNote} in ${esc(seconds)} s &mdash;
-      <strong>${esc(fraudCount)}</strong> flagged as fraud (${results.length ? ((fraudCount / results.length) * 100).toFixed(1) : 0}%).${problemNote}
+      <strong>${esc(fraudCount)}</strong> flagged as fraud (${results.length ? ((fraudCount / results.length) * 100).toFixed(1) : 0}%).${customersNote}${problemNote}
     `;
 
-    el.uploadTableBody.innerHTML = results
+    el.uploadTableBody.innerHTML = shown
       .map((r) => {
         const decision = esc(r.decision || "—");
         const actual = trueLabels.get(r.transaction_id);
@@ -615,7 +745,7 @@ el.uploadForm.addEventListener("submit", async (e) => {
           </tr>`;
       })
       .join("");
-    el.uploadTableWrap.hidden = false;
+    el.uploadTableWrap.hidden = !shown.length;
 
     showToast(failure ? "Upload stopped part-way" : `Uploaded dataset analyzed: ${fraudCount}/${results.length} flagged`);
     await loadAll();     // the upload is done; a failed refresh must not turn it into an error
