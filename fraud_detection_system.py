@@ -347,14 +347,14 @@ class FraudDetectionSystem:
         if sql_flag_count >= 3:
             return 'BLOCK', 'All three rule checks fired.'
         if ml_fraud and sql_flag_count >= 1:
-            return 'BLOCK', 'The model scored the transaction above 0.5 and at least one rule check fired.'
+            return 'BLOCK', 'The Risk Score is above 50 and at least one rule check fired.'
         if sql_flag_count >= 2:
             return 'REVIEW', 'Two rule checks fired.'
         if fraud_probability > 0.7:
-            return 'REVIEW', 'The model scored the transaction above 0.7.'
+            return 'REVIEW', 'The Risk Score is above 70.'
         if ml_fraud or fraud_probability > 0.5:
-            return 'MONITOR', 'The model scored the transaction above 0.5, but no rule check fired.'
-        return 'ALLOW', 'The score is at or below 0.5 and fewer than two rule checks fired.'
+            return 'MONITOR', 'The Risk Score is above 50, but no rule check fired.'
+        return 'ALLOW', 'The Risk Score is at or below 50 and fewer than two rule checks fired.'
     
     @staticmethod
     def _own_time(transaction):
@@ -379,20 +379,20 @@ class FraudDetectionSystem:
         count = len(fired)
         rules = '; '.join(fired)
         plural = '' if count == 1 else 's'
-        score = f"{fraud_probability:.1%}"
+        score = f"{fraud_probability * 100:.1f}/100"          # the dashboard shows the stored 0 to 1 score as a Risk Score out of 100
         if decision == 'BLOCK':
             if count >= 3:
                 return f"All three rule checks fired: {rules}."
-            return f"The model score {score} is above 50% and {count} rule check{plural} fired: {rules}."
+            return f"The Risk Score {score} is above 50 and {count} rule check{plural} fired: {rules}."
         if decision == 'REVIEW':
             if count >= 2:
                 return f"{count} rule checks fired: {rules}."
-            return f"The model score {score} is above 70%."
+            return f"The Risk Score {score} is above 70."
         if decision == 'MONITOR':
-            return f"The model score {score} is above 50%, but no rule check fired."
+            return f"The Risk Score {score} is above 50, but no rule check fired."
         if count:
-            return f"The model score {score}; only {count} rule check{plural} fired ({rules}), which is not enough to act."
-        return f"The model score {score}; no rule check fired."
+            return f"The Risk Score {score}; only {count} rule check{plural} fired ({rules}), which is not enough to act."
+        return f"The Risk Score {score}; no rule check fired."
 
     def _validate_transaction(self, transaction):
         """Validate transaction data (same rules as the API)"""
