@@ -26,6 +26,7 @@ const el = {
 
   dashboard: document.getElementById("dashboard"),
   apiStatus: document.getElementById("apiStatus"),
+  roleBadge: document.getElementById("roleBadge"),
   refreshBtn: document.getElementById("refreshBtn"),
   logoutBtn: document.getElementById("logoutBtn"),
 
@@ -83,6 +84,26 @@ function setToken(token) {
 
 function clearToken() {
   sessionStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem(ROLE_KEY);
+}
+
+// The role comes with the sign-in: admin can do everything, an analyst can analyze and upload but not delete,
+// and a viewer can only read. Hiding what a role cannot use is for clarity; the server enforces the role itself.
+const ROLE_KEY = "fraudAdmin.role";
+const ROLE_LABEL = { admin: "Admin", analyst: "Analyst", viewer: "Viewer (read-only)" };
+
+function applyRole() {
+  const stored = sessionStorage.getItem(ROLE_KEY);
+  const role = ROLE_LABEL[stored] ? stored : "viewer";      // a session without a known role is treated as read-only
+  const show = (form, allowed) => {
+    const panel = form.closest("section");
+    if (panel) panel.hidden = !allowed;
+  };
+  show(el.analyzeForm, role === "admin" || role === "analyst");
+  show(el.uploadForm, role === "admin" || role === "analyst");
+  show(el.resetForm, role === "admin");
+  el.roleBadge.textContent = ROLE_LABEL[role];
+  el.roleBadge.hidden = false;
 }
 
 function showToast(msg) {
@@ -135,6 +156,7 @@ function showLogin(message) {
 function showDashboard() {
   el.loginScreen.hidden = true;
   el.dashboard.hidden = false;
+  applyRole();
   loadAll();
   if (el.autoRefresh.checked) startAutoRefresh();
 }
@@ -177,6 +199,7 @@ el.loginForm.addEventListener("submit", async (e) => {
     if (!res.ok) throw new Error(data.error || "Login failed");
 
     setToken(data.token);
+    sessionStorage.setItem(ROLE_KEY, typeof data.role === "string" ? data.role : "viewer");
     showDashboard();
   } catch (err) {
     el.loginError.textContent = err.message.includes("fetch")

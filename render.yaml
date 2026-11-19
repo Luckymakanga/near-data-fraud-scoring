@@ -19,6 +19,9 @@ services:
       # Optional, set in the Render dashboard (not here): ADMIN_PASSWORD or
       # ADMIN_PASSWORD_HASH. Until one is set, the public demo password
       # "admin" is in use. ADMIN_USERNAME defaults to "admin".
+      # Also optional: a read-only account for the public (VIEWER_USERNAME and
+      # VIEWER_PASSWORD or VIEWER_PASSWORD_HASH) and an analyst account
+      # (ANALYST_USERNAME and ANALYST_PASSWORD or ANALYST_PASSWORD_HASH).
 
   - name: fraud-detection-dashboard
     type: web
