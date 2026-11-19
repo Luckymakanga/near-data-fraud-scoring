@@ -84,7 +84,8 @@ class TestLogin:
         assert client.post('/api/auth/login', json={'username': 'admin', 'password': 'admin'}).status_code == 401
 
     def test_login_attempts_are_rate_limited(self, client):
-        codes = [client.post('/api/auth/login', json={'username': 'admin', 'password': 'wrong'}).status_code for _ in range(12)]
+        # the lockout counts failures for one username, so a different one is tried each time to test the per-minute limit alone
+        codes = [client.post('/api/auth/login', json={'username': f'user{i}', 'password': 'wrong'}).status_code for i in range(12)]
         assert codes[:10] == [401] * 10
         assert 429 in codes[10:]
 

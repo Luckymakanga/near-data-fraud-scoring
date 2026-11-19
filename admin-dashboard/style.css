@@ -502,6 +502,7 @@ code {
 .risk-badge.risk-LOW { background: var(--green-soft); color: var(--green-ink); }
 .risk-badge.risk-MEDIUM { background: var(--yellow-soft); color: var(--yellow-ink); }
 .risk-badge.risk-HIGH { background: var(--red-soft); color: var(--red-ink); }
+.role-badge { font-size: 12px; padding: 3px 10px; border-radius: 999px; background: var(--track); color: var(--dim-ink); }
 .risk-badge.risk-NONE { background: var(--track); color: var(--dim-ink); }
 
 .count-list {

@@ -41,6 +41,10 @@ from validation import ID_RULE, valid_id, validate_transaction
 # per tab); the limit leaves room for several tabs and manual refreshes without locking it out.
 DASHBOARD_REFRESH_LIMIT = "600 per hour"
 
+# After this many failed sign-ins by one visitor for one username, further attempts are refused for a while
+LOCKOUT_FAILURES = 5
+LOCKOUT_SECONDS = 15 * 60
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -63,6 +67,8 @@ class FraudDetectionAPI:
         self.system = fraud_detection_system
         self.port = port
         self.debug = debug
+        self._failed_logins = {}              # (visitor, username) -> failed attempts, for the lockout
+        self._clock = time.monotonic          # a test can replace this to move time on
         self._load_admin_credentials()
 
         # Rate limiting, counted per visitor (see _client_address)
@@ -123,10 +129,17 @@ class FraudDetectionAPI:
         )
 
     def _load_admin_credentials(self):
-        """Admin login from the environment: ADMIN_USERNAME (default 'admin') and either
-        ADMIN_PASSWORD_HASH (a Werkzeug password hash, preferred) or ADMIN_PASSWORD.
-        If neither password variable is set, the public demo password is used and a
-        warning is logged."""
+        """The accounts that can sign in, from the environment. There are three roles:
+
+        admin    ADMIN_USERNAME (default 'admin') and ADMIN_PASSWORD_HASH or ADMIN_PASSWORD. Can do everything,
+                 including deleting the stored data.
+        analyst  ANALYST_USERNAME and ANALYST_PASSWORD_HASH or ANALYST_PASSWORD. Can view and analyze and upload
+                 transactions, but cannot delete data. Not available unless set.
+        viewer   VIEWER_USERNAME and VIEWER_PASSWORD_HASH or VIEWER_PASSWORD. Read-only: can view the results and
+                 profiles but cannot analyze, upload or delete. This is the account for a public demonstration.
+                 Not available unless set.
+
+        If no admin password variable is set, the public demo password is used and a warning is logged."""
         self.admin_username = os.environ.get('ADMIN_USERNAME', 'admin')
         self.admin_password_hash = os.environ.get('ADMIN_PASSWORD_HASH')
         self.admin_password = os.environ.get('ADMIN_PASSWORD')
@@ -136,15 +149,67 @@ class FraudDetectionAPI:
                 "ADMIN_PASSWORD / ADMIN_PASSWORD_HASH are not set: the public demo password "
                 "is in use. Set one of them for any real deployment."
             )
+        self.accounts = {'admin': {'username': self.admin_username, 'hash': self.admin_password_hash, 'password': self.admin_password}}
+        for role in ('analyst', 'viewer'):
+            prefix = role.upper()
+            username = os.environ.get(prefix + '_USERNAME', '').strip()
+            password_hash = os.environ.get(prefix + '_PASSWORD_HASH')
+            password = os.environ.get(prefix + '_PASSWORD')
+            if username and (password_hash or password):
+                if any(account['username'] == username for account in self.accounts.values()):
+                    logger.warning("The %s account is not enabled: its username is already used by another role.", role)
+                    continue
+                self.accounts[role] = {'username': username, 'hash': password_hash, 'password': password}
+            elif username or password_hash or password:
+                logger.warning("The %s account is not enabled: set both %s_USERNAME and a password (%s_PASSWORD_HASH or %s_PASSWORD).",
+                               role, prefix, prefix, prefix)
+
+    def _authenticate(self, username, password):
+        """The role of the account whose login this is, or None. Every account is checked each time, with
+        constant-time comparisons, so the time taken does not show which usernames exist."""
+        matched = None
+        for role, account in self.accounts.items():
+            user_ok = hmac.compare_digest(username.encode('utf-8'), account['username'].encode('utf-8'))
+            if account['hash']:
+                password_ok = check_password_hash(account['hash'], password)
+            else:
+                password_ok = hmac.compare_digest(password.encode('utf-8'), account['password'].encode('utf-8'))
+            if user_ok and password_ok and matched is None:
+                matched = role
+        return matched
 
     def _credentials_ok(self, username, password):
-        """Constant-time comparison of the supplied login with the configured one"""
-        user_ok = hmac.compare_digest(username.encode('utf-8'), self.admin_username.encode('utf-8'))
-        if self.admin_password_hash:
-            password_ok = check_password_hash(self.admin_password_hash, password)
-        else:
-            password_ok = hmac.compare_digest(password.encode('utf-8'), self.admin_password.encode('utf-8'))
-        return user_ok and password_ok
+        """Whether this is the login of any configured account"""
+        return self._authenticate(username, password) is not None
+
+    # ---- lockout after repeated failed sign-ins (kept in memory; the service runs one worker)
+
+    def _lock_key(self, username):
+        return (self._client_address(), username.strip().lower()[:64])
+
+    def _locked_for(self, key):
+        """Seconds that this visitor and username stay locked out, or 0"""
+        entry = self._failed_logins.get(key)
+        if not entry or not entry['until']:
+            return 0
+        remaining = entry['until'] - self._clock()
+        if remaining <= 0:
+            self._failed_logins.pop(key, None)
+            return 0
+        return remaining
+
+    def _record_failure(self, key):
+        now = self._clock()
+        entry = self._failed_logins.setdefault(key, {'count': 0, 'first': now, 'until': None})
+        if now - entry['first'] > LOCKOUT_SECONDS:
+            entry.update(count=0, first=now, until=None)
+        entry['count'] += 1
+        if entry['count'] >= LOCKOUT_FAILURES:
+            entry['until'] = now + LOCKOUT_SECONDS
+            logger.warning("Sign-in locked for %d minutes after %d failed attempts.", LOCKOUT_SECONDS // 60, entry['count'])
+        if len(self._failed_logins) > 1000:          # keep the table small: forget what has expired
+            for old_key in [k for k, v in self._failed_logins.items() if now - v['first'] > LOCKOUT_SECONDS and not v['until']]:
+                self._failed_logins.pop(old_key, None)
 
     @staticmethod
     def _log_failure(context, exc):
@@ -176,9 +241,22 @@ class FraudDetectionAPI:
                 return jsonify({'error': 'Invalid token'}), 401
 
             g.admin_username = data.get('username')
+            role = data.get('role')
+            g.role = role if isinstance(role, str) else 'viewer'      # a token without a role is read-only
             return f(*args, **kwargs)
 
         return decorated
+
+    def _roles(self, *allowed):
+        """Decorator: a signed-in user whose role is one of `allowed` (a 403 for any other role)"""
+        def decorator(f):
+            @wraps(f)
+            def checked(*args, **kwargs):
+                if g.role not in allowed:
+                    return jsonify({'error': 'Your account is not allowed to do this'}), 403
+                return f(*args, **kwargs)
+            return self._token_required(checked)
+        return decorator
 
     def _setup_routes(self):
         """Setup all API routes"""
@@ -197,20 +275,33 @@ class FraudDetectionAPI:
             if not isinstance(username, str) or not isinstance(password, str):
                 return jsonify({'error': 'username and password must be text'}), 400
 
-            if self._credentials_ok(username, password):
+            key = self._lock_key(username)
+            locked = self._locked_for(key)
+            if locked:
+                minutes = int(-(-locked // 60))
+                response = jsonify({'error': f'Too many failed sign-in attempts. Try again in {minutes} minute{"" if minutes == 1 else "s"}.'})
+                response.status_code = 429
+                response.headers['Retry-After'] = str(int(locked) + 1)
+                return response
+
+            role = self._authenticate(username, password)
+            if role:
+                self._failed_logins.pop(key, None)
                 token = jwt.encode({
                     'username': username,
+                    'role': role,
                     'exp': datetime.utcnow() + timedelta(hours=24)
                 }, self.app.config['SECRET_KEY'], algorithm='HS256')
 
-                return jsonify({'token': token, 'message': 'Login successful'}), 200
+                return jsonify({'token': token, 'role': role, 'message': 'Login successful'}), 200
 
+            self._record_failure(key)
             return jsonify({'error': 'Invalid credentials'}), 401
 
         # Transaction detection endpoints
         @self.app.route('/api/transactions/analyze', methods=['POST'])
         @self.limiter.limit("100 per hour")
-        @self._token_required
+        @self._roles('analyst', 'admin')
         def analyze_transaction():
             """Analyze single transaction for fraud"""
             try:
@@ -237,7 +328,7 @@ class FraudDetectionAPI:
         # Batch analysis endpoint
         @self.app.route('/api/transactions/batch-analyze', methods=['POST'])
         @self.limiter.limit("200 per hour")
-        @self._token_required
+        @self._roles('analyst', 'admin')
         def batch_analyze():
             """
             Analyze multiple transactions synchronously and return every
@@ -312,7 +403,7 @@ class FraudDetectionAPI:
         # Recent transactions (for admin/dashboard views)
         @self.app.route('/api/transactions/recent', methods=['GET'])
         @self.limiter.limit(DASHBOARD_REFRESH_LIMIT)
-        @self._token_required
+        @self._roles('viewer', 'analyst', 'admin')
         def get_recent_transactions():
             """Get the most recent transactions, newest first. Optional ?decision=BLOCK|REVIEW|MONITOR|ALLOW filters to that outcome."""
             try:
@@ -342,7 +433,7 @@ class FraudDetectionAPI:
         # components, so there's nothing meaningful an admin could type by hand)
         @self.app.route('/api/transactions/sample', methods=['GET'])
         @self.limiter.limit("200 per hour")
-        @self._token_required
+        @self._roles('viewer', 'analyst', 'admin')
         def get_sample_transaction():
             """Get one random real transaction from the training dataset, not yet analyzed"""
             try:
@@ -363,7 +454,7 @@ class FraudDetectionAPI:
         # Statistics endpoints
         @self.app.route('/api/statistics/fraud', methods=['GET'])
         @self.limiter.limit(DASHBOARD_REFRESH_LIMIT)
-        @self._token_required
+        @self._roles('viewer', 'analyst', 'admin')
         def get_fraud_stats():
             """Get current fraud statistics"""
             try:
@@ -381,7 +472,7 @@ class FraudDetectionAPI:
         # Fraud patterns endpoint
         @self.app.route('/api/statistics/patterns', methods=['GET'])
         @self.limiter.limit(DASHBOARD_REFRESH_LIMIT)
-        @self._token_required
+        @self._roles('viewer', 'analyst', 'admin')
         def get_patterns():
             """Get fraud patterns"""
             try:
@@ -399,7 +490,7 @@ class FraudDetectionAPI:
         # Customer risk profile
         @self.app.route('/api/customers/<customer_id>/risk-profile', methods=['GET'])
         @self.limiter.limit("200 per hour")
-        @self._token_required
+        @self._roles('viewer', 'analyst', 'admin')
         def get_customer_risk(customer_id):
             """Get customer risk profile"""
             if not valid_id(customer_id):
@@ -420,7 +511,7 @@ class FraudDetectionAPI:
         # ROI metrics
         @self.app.route('/api/metrics/roi', methods=['GET'])
         @self.limiter.limit("50 per hour")
-        @self._token_required
+        @self._roles('viewer', 'analyst', 'admin')
         def get_roi():
             """Get ROI metrics"""
             try:
@@ -438,7 +529,7 @@ class FraudDetectionAPI:
         # Executive summary
         @self.app.route('/api/reports/executive-summary', methods=['GET'])
         @self.limiter.limit("50 per hour")
-        @self._token_required
+        @self._roles('viewer', 'analyst', 'admin')
         def executive_summary():
             """Get executive summary"""
             try:
@@ -456,7 +547,7 @@ class FraudDetectionAPI:
         # The study's measured results, for the dashboard's research page
         @self.app.route('/api/research/results', methods=['GET'])
         @self.limiter.limit("60 per hour")
-        @self._token_required
+        @self._roles('viewer', 'analyst', 'admin')
         def research_results():
             """Condensed results of the architecture benchmarks (read from results/)"""
             try:
@@ -471,7 +562,7 @@ class FraudDetectionAPI:
         # Start a new evaluation session from zero
         @self.app.route('/api/admin/reset-demo-data', methods=['POST'])
         @self.limiter.limit("10 per hour")
-        @self._token_required
+        @self._roles('admin')
         def reset_demo_data():
             """Delete all stored transactions and alerts (customers stay). Needs the word RESET in the body."""
             if os.environ.get('DEMO_RESET', '').strip().lower() == 'off':

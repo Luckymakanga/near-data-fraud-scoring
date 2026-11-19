@@ -13,13 +13,13 @@ BAD_LOGIN = {'username': 'admin', 'password': 'wrong'}
 
 def attempts(client, n, ip=None):
     headers = {HEADER: ip} if ip else {}
-    return [client.post('/api/auth/login', json=BAD_LOGIN, headers=headers).status_code for _ in range(n)]
+    return [client.post('/api/auth/login', json={'username': f'visitor{i}', 'password': 'wrong'}, headers=headers).status_code for i in range(n)]
 
 
 class TestOffByDefault:
     def test_the_header_is_ignored_unless_it_is_enabled(self, client):
         """A caller must not be able to dodge the limits by writing a header"""
-        codes = [client.post('/api/auth/login', json=BAD_LOGIN, headers={HEADER: f'203.0.113.{i}'}).status_code for i in range(12)]
+        codes = [client.post('/api/auth/login', json={'username': f'visitor{i}', 'password': 'wrong'}, headers={HEADER: f'203.0.113.{i}'}).status_code for i in range(12)]
         assert codes[:10] == [401] * 10
         assert 429 in codes[10:]
 
@@ -61,7 +61,7 @@ class TestHostDetection:
         monkeypatch.setenv('RENDER', 'true')
         monkeypatch.setenv('CLIENT_IP_HEADER', '')
         client = make_api()[0].app.test_client()
-        codes = [client.post('/api/auth/login', json=BAD_LOGIN, headers={HEADER: f'203.0.113.{i}'}).status_code for i in range(12)]
+        codes = [client.post('/api/auth/login', json={'username': f'visitor{i}', 'password': 'wrong'}, headers={HEADER: f'203.0.113.{i}'}).status_code for i in range(12)]
         assert 429 in codes[10:]
 
     def test_another_header_can_be_named(self, make_api, monkeypatch):
